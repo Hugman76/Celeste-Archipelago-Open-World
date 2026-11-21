@@ -204,6 +204,7 @@ namespace Celeste.Mod.Celeste_Multiworld.General
                         self.level.DoScreenWipe(false, action, false);
                     }
 
+                    ArchipelagoManager.Instance.QueueDeathLinkMessage(ArchipelagoManager.Instance.DeathLinkData);
                     ArchipelagoManager.Instance.ClearDeathLink();
                 }
             }
@@ -429,6 +430,9 @@ namespace Celeste.Mod.Celeste_Multiworld.General
             {
                 self.Entities.Add(new ConnectionDisplay());
             }
+
+            // The level reloads after a DeathLink death, so the explanation is only queued now to avoid it being lost with the old level
+            ArchipelagoManager.Instance.ShowPendingDeathLinkMessage();
 
             self.SaveQuitDisabled = true;
         }

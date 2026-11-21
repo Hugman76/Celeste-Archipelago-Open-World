@@ -39,7 +39,8 @@ namespace Celeste.Mod.Celeste_Multiworld
             ItemReceive,
             ItemSend,
             ItemHint,
-            Literature
+            Literature,
+            DeathLink
         }
 
         public string Text { get; init; } = "";
@@ -216,6 +217,7 @@ namespace Celeste.Mod.Celeste_Multiworld
             this.GoldenDeathsCounted = 0;
             this.ItemQueue.Clear();
             this.MessageLog.Clear();
+            this.PendingDeathLinkMessage = null;
             this._lastDeath = DateTime.MinValue;
 
             // Watch for the following events.
@@ -484,6 +486,48 @@ namespace Celeste.Mod.Celeste_Multiworld
             {
                 DeathLinkData = deathLink;
             }
+        }
+
+        // Message explaining the last DeathLink received, shown once the level has reloaded after the death it caused
+        public string PendingDeathLinkMessage { get; private set; } = null;
+
+        public void QueueDeathLinkMessage(DeathLink deathLink)
+        {
+            if (deathLink == null)
+            {
+                return;
+            }
+
+            string source = string.IsNullOrWhiteSpace(deathLink.Source) ? "Someone" : EscapeFancyText(deathLink.Source);
+            string cause = string.IsNullOrWhiteSpace(deathLink.Cause) ? "" : EscapeFancyText(deathLink.Cause);
+
+            string prettyMessage = cause == ""
+                ? $"{{#FA8072}}DeathLink{{#}} from {{#FAFAD2}}{source}{{#}}."
+                : $"{{#FA8072}}DeathLink{{#}} from {{#FAFAD2}}{source}{{#}}: {cause}";
+
+            this.PendingDeathLinkMessage = prettyMessage;
+
+            string plainMessage = cause == "" ? $"DeathLink from {deathLink.Source}." : $"DeathLink from {deathLink.Source}: {deathLink.Cause}";
+            Logger.Info("AP", plainMessage);
+            Monocle.Engine.Commands.Log(plainMessage, M_Color.Red);
+        }
+
+        public void ShowPendingDeathLinkMessage()
+        {
+            if (this.PendingDeathLinkMessage == null)
+            {
+                return;
+            }
+
+            // DeathLinks take priority over the rest of the queue, as they explain what just happened
+            this.MessageLog.Insert(0, new ArchipelagoMessage(this.PendingDeathLinkMessage, ArchipelagoMessage.MessageType.DeathLink));
+            this.PendingDeathLinkMessage = null;
+        }
+
+        // Text sent by other players must not be able to inject FancyText commands
+        private static string EscapeFancyText(string text)
+        {
+            return text.Replace("{", "(").Replace("}", ")");
         }
 
         public void ClearDeathLink()
