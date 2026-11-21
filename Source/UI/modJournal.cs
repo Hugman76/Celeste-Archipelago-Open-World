@@ -993,6 +993,7 @@ namespace Celeste.Mod.Celeste_Multiworld.UI
             self.Pages.Clear();
             self.Pages.Add(new OuiJournalCover(self));
             self.Pages.Add(new OuiJournalGoal(self));
+            self.Pages.AddRange(OuiJournalHints.CreatePages(self));
             self.Pages.Add(new OuiJournalProgress(self));
             self.Pages.Add(new OuiJournalDeaths(self));
             self.Pages.Add(new OuiJournalPoem(self));
