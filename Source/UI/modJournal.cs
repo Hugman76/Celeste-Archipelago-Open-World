@@ -1000,6 +1000,11 @@ namespace Celeste.Mod.Celeste_Multiworld.UI
             self.Pages.Add(new OuiJournalGlobal(self));
             self.Pages.Add(new OuiJournalMoves(self));
 
+            if (ArchipelagoManager.Instance.RequireCassettes)
+            {
+                self.Pages.Add(new OuiJournalCassettes(self));
+            }
+
             if (ArchipelagoManager.Instance.ExistentInteractables.Count() == 0)
             {
                 // Left in for backwards compatibility with v1.0.x seeds
