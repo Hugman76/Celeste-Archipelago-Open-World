@@ -48,5 +48,7 @@ public class Celeste_MultiworldModuleSettings : EverestModuleSettings
     public ItemClassificationSpoils ShowBerryLocationClassifications { get; set; } = ItemClassificationSpoils.All;
 
     public bool JournalItemIndicators { get; set; } = false;
+
+    public bool ActiveTrapsDisplay { get; set; } = true;
     #endregion
 }
