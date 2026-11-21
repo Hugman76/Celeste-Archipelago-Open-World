@@ -988,34 +988,34 @@ namespace Celeste.Mod.Celeste_Multiworld.UI
             On.Celeste.OuiJournalGlobal.Redraw -= modOuiJournalGlobal_Redraw;
         }
 
-        private static System.Collections.IEnumerator modOuiJournal_Enter(On.Celeste.OuiJournal.orig_Enter orig, OuiJournal self, Oui from)
+        // Every page of the Archipelago Journal, used both by the Journal of the chapter select and by the book of the pause menu
+        public static List<OuiJournalPage> CreatePages(OuiJournal journal)
         {
-            yield return orig(self, from);
+            List<OuiJournalPage> pages = new List<OuiJournalPage>();
 
-            self.Pages.Clear();
-            self.Pages.Add(new OuiJournalCover(self));
-            self.Pages.Add(new OuiJournalGoal(self));
-            self.Pages.Add(new OuiJournalHints(self));
-            self.Pages.Add(new OuiJournalPlayers(self));
-            self.Pages.Add(new OuiJournalProgress(self));
-            self.Pages.Add(new OuiJournalDeaths(self));
-            self.Pages.Add(new OuiJournalPoem(self));
-            self.Pages.Add(new OuiJournalGlobal(self));
-            self.Pages.Add(new OuiJournalMoves(self));
+            pages.Add(new OuiJournalCover(journal));
+            pages.Add(new OuiJournalGoal(journal));
+            pages.Add(new OuiJournalHints(journal));
+            pages.Add(new OuiJournalPlayers(journal));
+            pages.Add(new OuiJournalProgress(journal));
+            pages.Add(new OuiJournalDeaths(journal));
+            pages.Add(new OuiJournalPoem(journal));
+            pages.Add(new OuiJournalGlobal(journal));
+            pages.Add(new OuiJournalMoves(journal));
 
             if (ArchipelagoManager.Instance.RequireCassettes)
             {
-                self.Pages.Add(new OuiJournalCassettes(self));
+                pages.Add(new OuiJournalCassettes(journal));
             }
 
             if (ArchipelagoManager.Instance.ExistentInteractables.Count() == 0)
             {
                 // Left in for backwards compatibility with v1.0.x seeds
-                self.Pages.Add(new OuiJournalSpeedrun(self));
+                pages.Add(new OuiJournalSpeedrun(journal));
             }
             else if (ArchipelagoManager.Instance.SplitInteractables == 0)
             {
-                self.Pages.Add(new OuiJournalInteractables(self, -1, -1));
+                pages.Add(new OuiJournalInteractables(journal, -1, -1));
             }
             else if (ArchipelagoManager.Instance.SplitInteractables == 1)
             {
@@ -1031,21 +1031,21 @@ namespace Celeste.Mod.Celeste_Multiworld.UI
                         continue;
                     }
 
-                    self.Pages.Add(new OuiJournalInteractables(self, level, -1));
+                    pages.Add(new OuiJournalInteractables(journal, level, -1));
                 }
             }
             else if (ArchipelagoManager.Instance.SplitInteractables == 2)
             {
                 // Per Side
-                self.Pages.Add(new OuiJournalInteractables(self, -1, 0));
+                pages.Add(new OuiJournalInteractables(journal, -1, 0));
 
                 if (ArchipelagoManager.Instance.IncludeBSides || ArchipelagoManager.Instance.GoalLevel == "7b" ||ArchipelagoManager.Instance.GoalLevel == "9b")
                 {
-                    self.Pages.Add(new OuiJournalInteractables(self, -1, 1));
+                    pages.Add(new OuiJournalInteractables(journal, -1, 1));
                 }
                 if (ArchipelagoManager.Instance.IncludeCSides || ArchipelagoManager.Instance.GoalLevel == "7c" || ArchipelagoManager.Instance.GoalLevel == "9c")
                 {
-                    self.Pages.Add(new OuiJournalInteractables(self, -1, 2));
+                    pages.Add(new OuiJournalInteractables(journal, -1, 2));
                 }
             }
             else if (ArchipelagoManager.Instance.SplitInteractables == 3)
@@ -1059,7 +1059,7 @@ namespace Celeste.Mod.Celeste_Multiworld.UI
                     }
                     else if (level == 10)
                     {
-                        self.Pages.Add(new OuiJournalInteractables(self, level, 0));
+                        pages.Add(new OuiJournalInteractables(journal, level, 0));
                         break;
                     }
 
@@ -1067,14 +1067,24 @@ namespace Celeste.Mod.Celeste_Multiworld.UI
                     {
                         if (ArchipelagoManager.Instance.ActiveLevels.Contains($"{level}{mode_to_str[side]}"))
                         {
-                            self.Pages.Add(new OuiJournalInteractables(self, level, side));
+                            pages.Add(new OuiJournalInteractables(journal, level, side));
                         }
                     }
                 }
             }
 
-            self.Pages.Add(new OuiJournalSeedSettings(self));
-            self.Pages.Add(new OuiJournalMissing(self));
+            pages.Add(new OuiJournalSeedSettings(journal));
+            pages.Add(new OuiJournalMissing(journal));
+
+            return pages;
+        }
+
+        private static System.Collections.IEnumerator modOuiJournal_Enter(On.Celeste.OuiJournal.orig_Enter orig, OuiJournal self, Oui from)
+        {
+            yield return orig(self, from);
+
+            self.Pages.Clear();
+            self.Pages.AddRange(CreatePages(self));
 
             int num = 0;
             foreach (OuiJournalPage ouiJournalPage in self.Pages)
