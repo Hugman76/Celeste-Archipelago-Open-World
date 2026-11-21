@@ -117,9 +117,12 @@ namespace Celeste.Mod.Celeste_Multiworld
 
         public int Slot => _session.ConnectionInfo.Slot;
         public bool DeathLink => _session.ConnectionInfo.Tags.Contains("DeathLink");
-        public int HintPoints => _session.RoomState.HintPoints;
-        public int HintCost => _session.RoomState.HintCost;
+        public int HintPoints => _session?.RoomState.HintPoints ?? 0;
+        public int HintCost => _session?.RoomState.HintCost ?? 0;
         public Hint[] Hints => _session.DataStorage.GetHints();
+
+        // Kept up to date by the server, so it can be read at any time without a network round trip
+        public Hint[] TrackedHints { get; private set; } = Array.Empty<Hint>();
 
         public int ServerItemsRcv = -1;
         private bool ItemRcvCallbackSet = false;
@@ -218,6 +221,7 @@ namespace Celeste.Mod.Celeste_Multiworld
             this.ItemQueue.Clear();
             this.MessageLog.Clear();
             this.PendingDeathLinkMessage = null;
+            this.TrackedHints = Array.Empty<Hint>();
             this._lastDeath = DateTime.MinValue;
 
             // Watch for the following events.
@@ -362,6 +366,15 @@ namespace Celeste.Mod.Celeste_Multiworld
 
             this.AddItemsRcvCallback($"Celeste_Open_Rcv_{_session.Players.GetPlayerName(this.Slot)}_{_session.ConnectionInfo.Team}", ItemsRcvUpdated);
             this.ServerItemsRcv = -1;
+
+            try
+            {
+                _session.DataStorage.TrackHints(hints => { this.TrackedHints = hints ?? Array.Empty<Hint>(); }, true);
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("AP", $"Unable to track hints: {ex.Message}");
+            }
 
             // TODO: Wrap this and only do if active
             //AddPlayerListCallback($"Celeste_OtherPlayers_List", PlayerListUpdated);
@@ -625,6 +638,79 @@ namespace Celeste.Mod.Celeste_Multiworld
         {
             var name = _session.Items.GetItemName(item);
             return string.IsNullOrEmpty(name) ? $"Unknown Item {item}" : name;
+        }
+
+        public struct HintDisplayInfo
+        {
+            public string ItemName;
+            public string LocationName;
+            public string FindingPlayerName;
+            public string ReceivingPlayerName;
+            public bool IsForThisSlot;
+            public bool IsInThisWorld;
+            public bool Found;
+            public HintStatus Status;
+            public ItemFlags Flags;
+        }
+
+        // Hints involving this slot with every id resolved to a name, unfound and prioritized hints first
+        public List<HintDisplayInfo> GetHintDisplayList()
+        {
+            List<HintDisplayInfo> result = new List<HintDisplayInfo>();
+
+            if (_session == null)
+            {
+                return result;
+            }
+
+            try
+            {
+                foreach (Hint hint in this.TrackedHints)
+                {
+                    string receiverGame = _session.Players.GetPlayerInfo(hint.ReceivingPlayer)?.Game;
+                    string finderGame = _session.Players.GetPlayerInfo(hint.FindingPlayer)?.Game;
+
+                    string itemName = _session.Items.GetItemName(hint.ItemId, receiverGame);
+                    string locationName = _session.Locations.GetLocationNameFromId(hint.LocationId, finderGame);
+
+                    result.Add(new HintDisplayInfo
+                    {
+                        ItemName = string.IsNullOrEmpty(itemName) ? $"Unknown Item {hint.ItemId}" : itemName,
+                        LocationName = string.IsNullOrEmpty(locationName) ? $"Unknown Location {hint.LocationId}" : locationName,
+                        FindingPlayerName = GetPlayerName(hint.FindingPlayer),
+                        ReceivingPlayerName = GetPlayerName(hint.ReceivingPlayer),
+                        IsForThisSlot = hint.ReceivingPlayer == this.Slot,
+                        IsInThisWorld = hint.FindingPlayer == this.Slot,
+                        Found = hint.Found,
+                        Status = hint.Status,
+                        Flags = hint.ItemFlags,
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("AP", $"Unable to read hints: {ex.Message}");
+            }
+
+            return result
+                .OrderBy(hint => hint.Found)
+                .ThenBy(hint => GetHintStatusOrder(hint.Status))
+                .ThenBy(hint => !hint.IsForThisSlot)
+                .ThenBy(hint => hint.ItemName)
+                .ToList();
+        }
+
+        private static int GetHintStatusOrder(HintStatus status)
+        {
+            switch (status)
+            {
+                case HintStatus.Priority:
+                    return 0;
+                case HintStatus.Avoid:
+                    return 2;
+                default:
+                    return 1;
+            }
         }
 
         public void EnableDeathLink()
