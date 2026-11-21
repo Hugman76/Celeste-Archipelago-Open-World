@@ -5,10 +5,10 @@ using Microsoft.Xna.Framework;
 
 namespace Celeste.Mod.Celeste_Multiworld.UI
 {
-    // Journal page(s) listing every player of the multiworld with their game and status.
-    internal class OuiJournalPlayers : OuiJournalPage
+    // Journal page listing every player of the multiworld with their game and status. Scrolls with Up/Down.
+    internal class OuiJournalPlayers : OuiJournalScrollPage
     {
-        private const int PlayersPerPage = 15;
+        private const int VisiblePlayers = 10;
 
         private const float NameWidth = 480f;
         private const float GameWidth = 560f;
@@ -22,63 +22,54 @@ namespace Celeste.Mod.Celeste_Multiworld.UI
         private static readonly Color GoalColor = new Color(30, 120, 40);
         private static readonly Color OfflineColor = Color.Black * 0.4f;
 
-        public static List<OuiJournalPlayers> CreatePages(OuiJournal journal)
-        {
-            List<ArchipelagoManager.PlayerDisplayInfo> players = ArchipelagoManager.Instance.GetPlayerDisplayList();
-            int goals = players.Count(player => player.Status == ArchipelagoClientState.ClientGoal);
+        private readonly List<ArchipelagoManager.PlayerDisplayInfo> players;
+        private readonly int goals;
 
-            int pageCount = System.Math.Max(1, (players.Count + PlayersPerPage - 1) / PlayersPerPage);
-            List<OuiJournalPlayers> pages = new List<OuiJournalPlayers>();
-            for (int page = 0; page < pageCount; page++)
-            {
-                pages.Add(new OuiJournalPlayers(journal, players.Skip(page * PlayersPerPage).Take(PlayersPerPage).ToList(), page, pageCount, goals, players.Count));
-            }
-            return pages;
+        protected override int ItemCount => this.players.Count;
+        protected override int VisibleItemCount => VisiblePlayers;
+
+        public OuiJournalPlayers(OuiJournal journal) : base(journal)
+        {
+            this.players = ArchipelagoManager.Instance.GetPlayerDisplayList();
+            this.goals = this.players.Count(player => player.Status == ArchipelagoClientState.ClientGoal);
         }
 
-        private OuiJournalPlayers(OuiJournal journal, List<ArchipelagoManager.PlayerDisplayInfo> players, int pageNumber, int pageCount, int goals, int playerCount) : base(journal)
+        private OuiJournalPage.Table BuildTable()
         {
-            MonoMod.Utils.DynamicData dynamicUI = MonoMod.Utils.DynamicData.For(this);
-            dynamicUI.Set("TextJustify", new Vector2(0.5f, 0.5f));
-            dynamicUI.Set("TextColor", Color.Black * 0.6f);
-            this.Journal = journal;
-
-            string header = pageCount > 1 ? $"PLAYERS ({pageNumber + 1}/{pageCount})" : "PLAYERS";
-
-            this.PageTexture = "page";
-            this.table = new OuiJournalPage.Table()
-                .AddColumn(new OuiJournalPage.TextCell(header, new Vector2(0f, 0.5f), 1f, Color.Black * 0.7f, NameWidth, true))
+            OuiJournalPage.Table table = new OuiJournalPage.Table()
+                .AddColumn(new OuiJournalPage.TextCell("PLAYERS", new Vector2(0f, 0.5f), 1f, Color.Black * 0.7f, NameWidth, true))
                 .AddColumn(new OuiJournalPage.EmptyCell(GapWidth))
                 .AddColumn(new OuiJournalPage.EmptyCell(GameWidth))
                 .AddColumn(new OuiJournalPage.EmptyCell(GapWidth))
                 .AddColumn(new OuiJournalPage.EmptyCell(StatusWidth));
 
-            this.table.AddRow()
-                .Add(new OuiJournalPage.TextCell($"Goals Completed: {goals} / {playerCount}", new Vector2(0f, 0.5f), 0.5f, Color.Black * 0.7f, NameWidth, true));
-            this.table.AddRow().Add(new OuiJournalPage.EmptyCell(16f));
+            table.AddRow()
+                .Add(new OuiJournalPage.TextCell($"Goals Completed: {this.goals} / {this.players.Count}", new Vector2(0f, 0.5f), 0.5f, Color.Black * 0.7f, NameWidth, true));
+            table.AddRow().Add(new OuiJournalPage.EmptyCell(16f));
 
-            this.table.AddRow()
+            table.AddRow()
                 .Add(new OuiJournalPage.TextCell("Player", new Vector2(0f, 0.5f), RowScale, LabelColor, NameWidth, true))
                 .Add(null)
                 .Add(new OuiJournalPage.TextCell("Game", new Vector2(0f, 0.5f), RowScale, LabelColor, GameWidth, true))
                 .Add(null)
                 .Add(new OuiJournalPage.TextCell("Status", new Vector2(0f, 0.5f), RowScale, LabelColor, StatusWidth, true));
 
-            foreach (ArchipelagoManager.PlayerDisplayInfo player in players)
+            foreach (ArchipelagoManager.PlayerDisplayInfo player in this.players.Skip(this.ScrollOffset).Take(VisiblePlayers))
             {
-                Color statusColor = GetStatusColor(player.Status);
                 string name = player.IsThisSlot ? $"{player.Name} (You)" : player.Name;
 
-                this.table.AddRow()
+                table.AddRow()
                     .Add(new OuiJournalPage.TextCell(FitText(name, RowScale, NameWidth), new Vector2(0f, 0.5f), RowScale, player.IsThisSlot ? ThisSlotColor : TextColorDefault, NameWidth, true))
                     .Add(null)
                     .Add(new OuiJournalPage.TextCell(FitText(player.Game ?? "", RowScale, GameWidth), new Vector2(0f, 0.5f), RowScale, TextColorDefault, GameWidth, true))
                     .Add(null)
-                    .Add(new OuiJournalPage.TextCell(GetStatusText(player.Status), new Vector2(0f, 0.5f), RowScale, statusColor, StatusWidth, true));
+                    .Add(new OuiJournalPage.TextCell(GetStatusText(player.Status), new Vector2(0f, 0.5f), RowScale, GetStatusColor(player.Status), StatusWidth, true));
             }
+
+            return table;
         }
 
-        private static string GetStatusText(ArchipelagoClientState status)
+        public static string GetStatusText(ArchipelagoClientState status)
         {
             switch (status)
             {
@@ -108,29 +99,13 @@ namespace Celeste.Mod.Celeste_Multiworld.UI
             }
         }
 
-        private static string FitText(string text, float scale, float maxWidth)
-        {
-            if (ActiveFont.Measure(text).X * scale <= maxWidth)
-            {
-                return text;
-            }
-
-            while (text.Length > 1 && ActiveFont.Measure(text + "...").X * scale > maxWidth)
-            {
-                text = text.Substring(0, text.Length - 1);
-            }
-
-            return text.TrimEnd() + "...";
-        }
-
         public override void Redraw(Monocle.VirtualRenderTarget buffer)
         {
             base.Redraw(buffer);
             Monocle.Draw.SpriteBatch.Begin();
-            this.table.Render(new Vector2(60f, 20f));
+            BuildTable().Render(new Vector2(60f, 20f));
+            DrawScrollIndicators(60f, 960f);
             Monocle.Draw.SpriteBatch.End();
         }
-
-        private OuiJournalPage.Table table;
     }
 }

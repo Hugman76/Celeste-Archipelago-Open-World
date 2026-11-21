@@ -5,10 +5,10 @@ using Microsoft.Xna.Framework;
 
 namespace Celeste.Mod.Celeste_Multiworld.UI
 {
-    // Journal page(s) listing every hint involving this slot, along with the hint points available.
-    internal class OuiJournalHints : OuiJournalPage
+    // Journal page listing every hint involving this slot, along with the hint points available. Scrolls with Up/Down.
+    internal class OuiJournalHints : OuiJournalScrollPage
     {
-        private const int HintsPerPage = 13;
+        private const int VisibleHints = 10;
 
         private const float ItemWidth = 420f;
         private const float LocationWidth = 520f;
@@ -30,36 +30,24 @@ namespace Celeste.Mod.Celeste_Multiworld.UI
         private static readonly Color TrapColor = Monocle.Calc.HexToColor("B03A2E");
         private static readonly Color FillerColor = Monocle.Calc.HexToColor("1E7F7F");
 
-        public static List<OuiJournalHints> CreatePages(OuiJournal journal)
+        private readonly List<ArchipelagoManager.HintDisplayInfo> hints;
+        private readonly int hintPoints;
+        private readonly int hintCost;
+
+        protected override int ItemCount => this.hints.Count;
+        protected override int VisibleItemCount => VisibleHints;
+
+        public OuiJournalHints(OuiJournal journal) : base(journal)
         {
-            List<ArchipelagoManager.HintDisplayInfo> hints = ArchipelagoManager.Instance.GetHintDisplayList();
-            int hintPoints = ArchipelagoManager.Instance.HintPoints;
-            int hintCost = ArchipelagoManager.Instance.HintCost;
-
-            int pageCount = System.Math.Max(1, (hints.Count + HintsPerPage - 1) / HintsPerPage);
-
-            List<OuiJournalHints> pages = new List<OuiJournalHints>();
-            for (int page = 0; page < pageCount; page++)
-            {
-                List<ArchipelagoManager.HintDisplayInfo> pageHints = hints.Skip(page * HintsPerPage).Take(HintsPerPage).ToList();
-                pages.Add(new OuiJournalHints(journal, pageHints, page, pageCount, hintPoints, hintCost));
-            }
-
-            return pages;
+            this.hints = ArchipelagoManager.Instance.GetHintDisplayList();
+            this.hintPoints = ArchipelagoManager.Instance.HintPoints;
+            this.hintCost = ArchipelagoManager.Instance.HintCost;
         }
 
-        public OuiJournalHints(OuiJournal journal, List<ArchipelagoManager.HintDisplayInfo> hints, int pageNumber, int pageCount, int hintPoints, int hintCost) : base(journal)
+        private OuiJournalPage.Table BuildTable()
         {
-            MonoMod.Utils.DynamicData dynamicUI = MonoMod.Utils.DynamicData.For(this);
-            dynamicUI.Set("TextJustify", new Vector2(0.5f, 0.5f));
-            dynamicUI.Set("TextColor", Color.Black * 0.6f);
-            this.Journal = journal;
-
-            string header = pageCount > 1 ? $"HINTS ({pageNumber + 1}/{pageCount})" : "HINTS";
-
-            this.PageTexture = "page";
-            this.table = new OuiJournalPage.Table()
-                .AddColumn(new OuiJournalPage.TextCell(header, new Vector2(0f, 0.5f), 1f, Color.Black * 0.7f, ItemWidth, true))
+            OuiJournalPage.Table table = new OuiJournalPage.Table()
+                .AddColumn(new OuiJournalPage.TextCell("HINTS", new Vector2(0f, 0.5f), 1f, Color.Black * 0.7f, ItemWidth, true))
                 .AddColumn(new OuiJournalPage.EmptyCell(GapWidth))
                 .AddColumn(new OuiJournalPage.EmptyCell(LocationWidth))
                 .AddColumn(new OuiJournalPage.EmptyCell(GapWidth))
@@ -67,21 +55,21 @@ namespace Celeste.Mod.Celeste_Multiworld.UI
                 .AddColumn(new OuiJournalPage.EmptyCell(GapWidth))
                 .AddColumn(new OuiJournalPage.EmptyCell(StatusWidth));
 
-            this.table.AddRow()
-                .Add(new OuiJournalPage.TextCell($"Hint Points: {hintPoints}", new Vector2(0f, 0.5f), InfoScale, InfoColor, ItemWidth, true))
+            table.AddRow()
+                .Add(new OuiJournalPage.TextCell($"Hint Points: {this.hintPoints}", new Vector2(0f, 0.5f), InfoScale, InfoColor, ItemWidth, true))
                 .Add(null)
-                .Add(new OuiJournalPage.TextCell($"Next Hint Cost: {hintCost}", new Vector2(0f, 0.5f), InfoScale, InfoColor, LocationWidth, true));
+                .Add(new OuiJournalPage.TextCell($"Next Hint Cost: {this.hintCost}", new Vector2(0f, 0.5f), InfoScale, InfoColor, LocationWidth, true));
 
-            this.table.AddRow().Add(new OuiJournalPage.EmptyCell(16f));
+            table.AddRow().Add(new OuiJournalPage.EmptyCell(16f));
 
-            if (hints.Count == 0)
+            if (this.hints.Count == 0)
             {
-                this.table.AddRow()
+                table.AddRow()
                     .Add(new OuiJournalPage.TextCell("No hints yet.", new Vector2(0f, 0.5f), InfoScale, InfoColor, ItemWidth, true));
-                return;
+                return table;
             }
 
-            this.table.AddRow()
+            table.AddRow()
                 .Add(new OuiJournalPage.TextCell("Item", new Vector2(0f, 0.5f), LabelScale, LabelColor, ItemWidth, true))
                 .Add(null)
                 .Add(new OuiJournalPage.TextCell("Location", new Vector2(0f, 0.5f), LabelScale, LabelColor, LocationWidth, true))
@@ -90,12 +78,12 @@ namespace Celeste.Mod.Celeste_Multiworld.UI
                 .Add(null)
                 .Add(new OuiJournalPage.TextCell("Status", new Vector2(0f, 0.5f), LabelScale, LabelColor, StatusWidth, true));
 
-            foreach (ArchipelagoManager.HintDisplayInfo hint in hints)
+            foreach (ArchipelagoManager.HintDisplayInfo hint in this.hints.Skip(this.ScrollOffset).Take(VisibleHints))
             {
                 Color itemColor = hint.Found ? FoundColor : GetItemColor(hint.Flags);
                 Color rowColor = hint.Found ? FoundColor : TextColorDefault;
 
-                this.table.AddRow()
+                table.AddRow()
                     .Add(new OuiJournalPage.TextCell(FitText(hint.ItemName, HintScale, ItemWidth), new Vector2(0f, 0.5f), HintScale, itemColor, ItemWidth, true))
                     .Add(null)
                     .Add(new OuiJournalPage.TextCell(FitText(hint.LocationName, HintScale, LocationWidth), new Vector2(0f, 0.5f), HintScale, rowColor, LocationWidth, true))
@@ -104,9 +92,11 @@ namespace Celeste.Mod.Celeste_Multiworld.UI
                     .Add(null)
                     .Add(new OuiJournalPage.TextCell(GetStatusText(hint), new Vector2(0f, 0.5f), HintScale, rowColor, StatusWidth, true));
             }
+
+            return table;
         }
 
-        private static string GetPlayerText(ArchipelagoManager.HintDisplayInfo hint)
+        public static string GetPlayerText(ArchipelagoManager.HintDisplayInfo hint)
         {
             if (hint.IsForThisSlot && hint.IsInThisWorld)
             {
@@ -119,7 +109,7 @@ namespace Celeste.Mod.Celeste_Multiworld.UI
             return $"For {hint.ReceivingPlayerName}";
         }
 
-        private static string GetStatusText(ArchipelagoManager.HintDisplayInfo hint)
+        public static string GetStatusText(ArchipelagoManager.HintDisplayInfo hint)
         {
             if (hint.Found)
             {
@@ -156,30 +146,13 @@ namespace Celeste.Mod.Celeste_Multiworld.UI
             return FillerColor;
         }
 
-        // Names from other games can be long, so they are shortened to fit their column
-        private static string FitText(string text, float scale, float maxWidth)
-        {
-            if (ActiveFont.Measure(text).X * scale <= maxWidth)
-            {
-                return text;
-            }
-
-            while (text.Length > 1 && ActiveFont.Measure(text + "...").X * scale > maxWidth)
-            {
-                text = text.Substring(0, text.Length - 1);
-            }
-
-            return text.TrimEnd() + "...";
-        }
-
         public override void Redraw(Monocle.VirtualRenderTarget buffer)
         {
             base.Redraw(buffer);
             Monocle.Draw.SpriteBatch.Begin();
-            this.table.Render(new Vector2(60f, 20f));
+            BuildTable().Render(new Vector2(60f, 20f));
+            DrawScrollIndicators(60f, 960f);
             Monocle.Draw.SpriteBatch.End();
         }
-
-        private OuiJournalPage.Table table;
     }
 }
