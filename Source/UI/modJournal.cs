@@ -1099,6 +1099,18 @@ namespace Celeste.Mod.Celeste_Multiworld.UI
                 .AddColumn(new OuiJournalPage.IconCell("binoculars", 100f))
                 .AddColumn(new OuiJournalPage.IconCell("house", 100f));
 
+            // These columns only matter for some seeds, and there is no room to always show them
+            bool showCars = ArchipelagoManager.Instance.Carsanity;
+            bool showGoldens = ArchipelagoManager.Instance.IncludeGoldens;
+            if (showCars)
+            {
+                self.table.AddColumn(new OuiJournalPage.TextCell("Cars", self.TextJustify, 0.5f, Color.Black * 0.7f, 90f, true));
+            }
+            if (showGoldens)
+            {
+                self.table.AddColumn(new OuiJournalPage.TextCell("Goldens", self.TextJustify, 0.5f, Color.Black * 0.7f, 110f, true));
+            }
+
             int AllLocationsDone = ArchipelagoManager.Instance.LocationsCheckedCount();
             int AllLocationsTotal = ArchipelagoManager.Instance.LocationsTotalCount();
 
@@ -1120,6 +1132,10 @@ namespace Celeste.Mod.Celeste_Multiworld.UI
                     int KeyTotal = 0;
                     int BinocularsTotal = 0;
                     int RoomTotal = 0;
+                    int CarDone = 0;
+                    int GoldenDone = 0;
+                    int CarTotal = 0;
+                    int GoldenTotal = 0;
 
                     foreach (string level in ArchipelagoManager.Instance.ActiveLevels)
                     {
@@ -1146,6 +1162,11 @@ namespace Celeste.Mod.Celeste_Multiworld.UI
                             KeyTotal += Locations.APLocationData.GetLocationTotal(Locations.LocationType.Key, areaStats.ID, mode);
                             BinocularsTotal += Locations.APLocationData.GetLocationTotal(Locations.LocationType.Binoculars, areaStats.ID, mode);
                             RoomTotal += Locations.APLocationData.GetLocationTotal(Locations.LocationType.Room, areaStats.ID, mode);
+
+                            CarDone += Locations.APLocationData.GetLocationCount(Locations.LocationType.Car, areaStats.ID, mode);
+                            GoldenDone += Locations.APLocationData.GetLocationCount(Locations.LocationType.Golden, areaStats.ID, mode);
+                            CarTotal += Locations.APLocationData.GetLocationTotal(Locations.LocationType.Car, areaStats.ID, mode);
+                            GoldenTotal += Locations.APLocationData.GetLocationTotal(Locations.LocationType.Golden, areaStats.ID, mode);
                         }
                     }
 
@@ -1248,6 +1269,16 @@ namespace Celeste.Mod.Celeste_Multiworld.UI
                     {
                         row.Add(new OuiJournalPage.IconCell("dot", 0f));
                     }
+
+                    if (showCars)
+                    {
+                        row.Add(CountCell(self, CarDone, CarTotal));
+                    }
+
+                    if (showGoldens)
+                    {
+                        row.Add(CountCell(self, GoldenDone, GoldenTotal));
+                    }
                 }
             }
 
@@ -1277,6 +1308,15 @@ namespace Celeste.Mod.Celeste_Multiworld.UI
 
                 self.table.AddRow();
             }
+        }
+
+        private static OuiJournalPage.Cell CountCell(OuiJournalProgress self, int done, int total)
+        {
+            if (total == 0)
+            {
+                return new OuiJournalPage.IconCell("dot", 0f);
+            }
+            return new OuiJournalPage.TextCell($"{done} / {total}", self.TextJustify, 0.5f, self.TextColor, 0f, false);
         }
 
         private static void modOuiJournalSpeedrun_ctor(On.Celeste.OuiJournalSpeedrun.orig_ctor orig, OuiJournalSpeedrun self, OuiJournal journal)

@@ -14,7 +14,9 @@ namespace Celeste.Mod.Celeste_Multiworld.Locations
         Key,
         Gem,
         Binoculars,
-        Room
+        Room,
+        Car,
+        Golden
     }
 
     internal class APLocationData
@@ -93,9 +95,48 @@ namespace Celeste.Mod.Celeste_Multiworld.Locations
                     }
                     break;
                 }
+                case LocationType.Car:
+                {
+                    foreach (string location in Celeste_MultiworldModule.SaveData.CarLocations)
+                    {
+                        if (CarIDToAP.ContainsKey(location) && location.StartsWith(level_mode + "_"))
+                        {
+                            count++;
+                        }
+                    }
+                    break;
+                }
+                case LocationType.Golden:
+                {
+                    if (!IsGoldenAreaActive(level))
+                    {
+                        break;
+                    }
+
+                    foreach (string location in Celeste_MultiworldModule.SaveData.StrawberryLocations)
+                    {
+                        if (IsGoldenLocation(location) && location.StartsWith(level_mode + "_"))
+                        {
+                            count++;
+                        }
+                    }
+                    break;
+                }
             }
 
             return count;
+        }
+
+        // Golden Strawberry locations share the Strawberry tables, with ids in their own range
+        public static bool IsGoldenLocation(string location)
+        {
+            return StrawberryIDToAP.TryGetValue(location, out long id) && id >= 0xCA11000 && id < 0xCA12000;
+        }
+
+        // The Farewell Golden is only part of the seed when the Farewell Golden level is
+        private static bool IsGoldenAreaActive(int level)
+        {
+            return level != 10 || ArchipelagoManager.Instance.ActiveLevels.Contains("10c");
         }
 
         public static int GetLocationTotal(LocationType type, int level, int mode)
@@ -191,6 +232,43 @@ namespace Celeste.Mod.Celeste_Multiworld.Locations
                         }
 
                         if (location.StartsWith(level_mode))
+                        {
+                            count++;
+                        }
+                    }
+                    break;
+                }
+                case LocationType.Car:
+                {
+                    foreach (string location in CarIDToAP.Keys)
+                    {
+                        if (level == 10)
+                        {
+                            // Rooms from "f" onwards belong to the second half of Farewell
+                            string room = location.Replace(level_mode, "");
+                            if (!ArchipelagoManager.Instance.ActiveLevels.Contains("10b") && (room.Substring(1, 1).CompareTo("f") >= 0))
+                            {
+                                continue;
+                            }
+                        }
+
+                        if (location.StartsWith(level_mode + "_"))
+                        {
+                            count++;
+                        }
+                    }
+                    break;
+                }
+                case LocationType.Golden:
+                {
+                    if (!IsGoldenAreaActive(level))
+                    {
+                        break;
+                    }
+
+                    foreach (string location in StrawberryIDToAP.Keys)
+                    {
+                        if (IsGoldenLocation(location) && location.StartsWith(level_mode + "_"))
                         {
                             count++;
                         }
