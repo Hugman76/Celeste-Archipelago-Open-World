@@ -66,6 +66,7 @@ public class Celeste_MultiworldModule : EverestModule
         heartGate.Load();
 
         modMiniTextbox.Load();
+        ArchipelagoInfoOverlay.Load();
         MessagesOverlay.Load();
     }
 
@@ -90,6 +91,7 @@ public class Celeste_MultiworldModule : EverestModule
         heartGate.Unload();
 
         modMiniTextbox.Unload();
+        ArchipelagoInfoOverlay.Unload();
         MessagesOverlay.Unload();
     }
 }
