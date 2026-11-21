@@ -141,6 +141,14 @@ namespace Celeste.Mod.Celeste_Multiworld.UI
                 return;
             }
 
+            // The hints and players pages lead to the screen that also lets the player request hints
+            ArchipelagoInfoOverlay.Tab? infoTab = GetInfoTab(this.pages[this.pageIndex]);
+            if (infoTab.HasValue && Input.MenuConfirm.Pressed)
+            {
+                OpenInfoOverlay(infoTab.Value);
+                return;
+            }
+
             // Scrollable pages handle Up/Down themselves and redraw into the journal's current buffer. Other pages, like the
             // poem, rely on the chapter select Journal to run their animations, so they are only shown here.
             if (this.pages[this.pageIndex] is OuiJournalScrollPage scrollPage)
@@ -148,6 +156,32 @@ namespace Celeste.Mod.Celeste_Multiworld.UI
                 scrollPage.Update();
                 Engine.Graphics.GraphicsDevice.SetRenderTarget(null);
             }
+        }
+
+        private static ArchipelagoInfoOverlay.Tab? GetInfoTab(OuiJournalPage page)
+        {
+            switch (page)
+            {
+                case OuiJournalHints:
+                    return ArchipelagoInfoOverlay.Tab.Hints;
+                case OuiJournalPlayers:
+                    return ArchipelagoInfoOverlay.Tab.Players;
+                default:
+                    return null;
+            }
+        }
+
+        // Swaps the book for the hints and players screen, which brings the book back on this page when closed
+        private void OpenInfoOverlay(ArchipelagoInfoOverlay.Tab tab)
+        {
+            this.closing = true;
+            Audio.Play("event:/ui/main/button_select");
+            RemoveSelf();
+
+            Level level = this.level;
+            Action onClose = this.onClose;
+            int page = this.pageIndex;
+            level.Add(new ArchipelagoInfoOverlay(() => level.Add(new ArchipelagoBookOverlay(level, onClose, page)), tab));
         }
 
         // In the chapter select, the Journal itself draws the paper behind its pages, which only hold their content
@@ -181,7 +215,11 @@ namespace Celeste.Mod.Celeste_Multiworld.UI
             {
                 ActiveFont.Draw($"Page {this.pageIndex + 1} / {this.pages.Count}", new Vector2(960f, 1000f), new Vector2(0.5f, 0.5f), Vector2.One * 0.45f, Color.White * 0.8f);
             }
-            ActiveFont.Draw("Left/Right: turn the page   Up/Down: scroll   Back: close", new Vector2(960f, 1045f), new Vector2(0.5f, 0.5f), Vector2.One * 0.4f, Color.Gray);
+            bool hasInfoTab = this.pages != null && this.pages.Count > 0 && GetInfoTab(this.pages[this.pageIndex]).HasValue;
+            string help = hasInfoTab
+                ? "Left/Right: turn the page   Up/Down: scroll   Confirm: hints and players screen   Back: close"
+                : "Left/Right: turn the page   Up/Down: scroll   Back: close";
+            ActiveFont.Draw(help, new Vector2(960f, 1045f), new Vector2(0.5f, 0.5f), Vector2.One * 0.4f, Color.Gray);
         }
     }
 }
