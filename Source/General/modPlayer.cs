@@ -434,6 +434,10 @@ namespace Celeste.Mod.Celeste_Multiworld.General
             {
                 self.Entities.Add(new TrapDisplay());
             }
+            if (self.Entities.FindFirst<LocationPreviewDisplay>() == null)
+            {
+                self.Entities.Add(new LocationPreviewDisplay());
+            }
 
             // The level reloads after a DeathLink death, so the explanation is only queued now to avoid it being lost with the old level
             ArchipelagoManager.Instance.ShowPendingDeathLinkMessage();

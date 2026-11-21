@@ -50,5 +50,7 @@ public class Celeste_MultiworldModuleSettings : EverestModuleSettings
     public bool JournalItemIndicators { get; set; } = false;
 
     public bool ActiveTrapsDisplay { get; set; } = true;
+
+    public bool LocationItemPreview { get; set; } = true;
     #endregion
 }

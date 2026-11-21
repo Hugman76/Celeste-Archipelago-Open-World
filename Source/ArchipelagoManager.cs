@@ -714,6 +714,29 @@ namespace Celeste.Mod.Celeste_Multiworld
             return string.IsNullOrEmpty(name) ? $"Unknown Item {item}" : name;
         }
 
+        // What the given location of this slot holds, from the scouting done on connection
+        public bool TryGetLocationItem(long locationID, out string itemName, out string receiverName, out bool forThisSlot, out ItemFlags flags)
+        {
+            itemName = "";
+            receiverName = "";
+            forThisSlot = false;
+            flags = ItemFlags.None;
+
+            if (!this.LocationDictionary.TryGetValue(locationID, out ItemInfo info) || info == null)
+            {
+                return false;
+            }
+
+            // Scouted items expose their receiver through ScoutedItemInfo.Player, which hides ItemInfo.Player
+            PlayerInfo receiver = (info as ScoutedItemInfo)?.Player ?? info.Player;
+
+            itemName = string.IsNullOrEmpty(info.ItemDisplayName) ? info.ItemName : info.ItemDisplayName;
+            forThisSlot = receiver != null && receiver.Slot == this.Slot;
+            receiverName = receiver == null ? "Unknown Player" : GetPlayerName(receiver.Slot);
+            flags = info.Flags;
+            return true;
+        }
+
         public struct HintDisplayInfo
         {
             public string ItemName;
