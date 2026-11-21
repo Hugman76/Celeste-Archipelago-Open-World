@@ -17,6 +17,12 @@ namespace Celeste.Mod.Celeste_Multiworld.General
     {
         public static string CurrentRoom = "";
         public static int RoomDisplayTimer = 0;
+        // Roomsanity location checked by entering the current room for the first time, if any
+        public static string NewlyCheckedRoom = "";
+
+        private static string chapterName = "";
+        private static string roomCountText = "";
+        private static string roomCountKey = "";
 
         public RoomDisplay()
         {
@@ -37,12 +43,25 @@ namespace Celeste.Mod.Celeste_Multiworld.General
                 return;
             }
 
-            if (SaveData.Instance.CurrentSession_Safe.Level != CurrentRoom && SaveData.Instance.CurrentSession_Safe.Level != "")
+            Session session = SaveData.Instance.CurrentSession_Safe;
+
+            if (session.Level != CurrentRoom && session.Level != "")
             {
-                CurrentRoom = SaveData.Instance.CurrentSession_Safe.Level;
+                CurrentRoom = session.Level;
+                chapterName = GetChapterName(session.Area);
+
+                // Forget the last new room once another room is entered, so going back to it does not show it as new again
+                if (NewlyCheckedRoom != $"{session.Area.ID}_{(int)session.Area.Mode}_{CurrentRoom}")
+                {
+                    NewlyCheckedRoom = "";
+                }
 
                 RoomDisplayTimer = 180;
             }
+
+            string roomID = $"{session.Area.ID}_{(int)session.Area.Mode}_{CurrentRoom}";
+            bool isNewRoom = NewlyCheckedRoom == roomID;
+            UpdateRoomCount(session.Area);
 
             if (RoomDisplayTimer >= 0)
             {
@@ -60,8 +79,55 @@ namespace Celeste.Mod.Celeste_Multiworld.General
                 Color TextColor = new Color(0.96078f, 0.25882f, 0.78431f, alpha);
 
                 ActiveFont.Draw($"Room: {CurrentRoom}", new Vector2(50f, 1030f), new Vector2(0.0f, 0.5f), Vector2.One, TextColor, 5.0f, new Color(0.0f, 0.0f, 0.0f, alpha), 0.0f, new Color(1.0f, 0.0f, 0.0f, 0.0f));
+
+                string details = chapterName;
+                if (roomCountText != "")
+                {
+                    details += $"  -  {roomCountText}";
+                }
+                if (isNewRoom)
+                {
+                    details += "  -  New room!";
+                }
+                Color detailsColor = (isNewRoom ? new Color(0.48627f, 0.98824f, 0f) : Color.White) * alpha;
+                ActiveFont.Draw(details, new Vector2(50f, 975f), new Vector2(0.0f, 0.5f), Vector2.One * 0.6f, detailsColor, 3.0f, new Color(0.0f, 0.0f, 0.0f, alpha), 0.0f, new Color(1.0f, 0.0f, 0.0f, 0.0f));
+
                 RoomDisplayTimer--;
             }
+        }
+
+        private static string GetChapterName(AreaKey area)
+        {
+            string name = UI.modJournal.level_to_str.TryGetValue(area.ID, out string levelName) ? levelName : $"Chapter {area.ID}";
+
+            // The Prologue, the Epilogue and Farewell only have one side
+            if (area.ID == 0 || area.ID == 8 || area.ID == 10)
+            {
+                return name;
+            }
+
+            return $"{name} {"ABC"[(int)area.Mode]}";
+        }
+
+        // Rooms checked out of the rooms of this side, only counted when Roomsanity is on
+        private static void UpdateRoomCount(AreaKey area)
+        {
+            if (!ArchipelagoManager.Instance.Roomsanity)
+            {
+                roomCountText = "";
+                return;
+            }
+
+            string key = $"{area.ID}_{(int)area.Mode}_{Celeste_MultiworldModule.SaveData.RoomLocations.Count}";
+            if (key == roomCountKey)
+            {
+                return;
+            }
+            roomCountKey = key;
+
+            int done = Locations.APLocationData.GetLocationCount(Locations.LocationType.Room, area.ID, (int)area.Mode);
+            int total = Locations.APLocationData.GetLocationTotal(Locations.LocationType.Room, area.ID, (int)area.Mode);
+            roomCountText = total > 0 ? $"Rooms: {done} / {total}" : "";
         }
     }
 
@@ -218,7 +284,10 @@ namespace Celeste.Mod.Celeste_Multiworld.General
 
                 if (ArchipelagoManager.Instance.Roomsanity)
                 {
-                    Celeste_MultiworldModule.SaveData.RoomLocations.Add(AP_ID);
+                    if (Celeste_MultiworldModule.SaveData.RoomLocations.Add(AP_ID) && Locations.APLocationData.RoomNameToAP.ContainsKey(AP_ID))
+                    {
+                        RoomDisplay.NewlyCheckedRoom = AP_ID;
+                    }
                 }
             }
             else if (!self.InControl)
