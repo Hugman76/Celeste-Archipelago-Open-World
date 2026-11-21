@@ -199,9 +199,9 @@ namespace Celeste.Mod.Celeste_Multiworld.UI
             }
 
             ArchipelagoManager.HintableItem item = this.hintableItems[this.selection];
-            bool alreadyHinted = IsHinted(item.Name);
+            // Asking again for an item that is already hinted costs nothing, but each new copy of a repeatable item costs a hint
+            bool alreadyHinted = !item.Repeatable && CountHints(item.Name) > 0;
 
-            // Asking again for an item that is already hinted costs nothing
             if (!alreadyHinted && !ArchipelagoManager.Instance.CanAffordHint)
             {
                 this.status = $"Not enough hint points ({ArchipelagoManager.Instance.HintPoints} / {ArchipelagoManager.Instance.HintCost}).";
@@ -225,9 +225,9 @@ namespace Celeste.Mod.Celeste_Multiworld.UI
             }
         }
 
-        private bool IsHinted(string itemName)
+        private int CountHints(string itemName)
         {
-            return this.hints.Any(hint => hint.IsForThisSlot && hint.ItemName == itemName);
+            return this.hints.Count(hint => hint.IsForThisSlot && hint.ItemName == itemName);
         }
 
         public override void Render()
@@ -328,7 +328,8 @@ namespace Celeste.Mod.Celeste_Multiworld.UI
                 ArchipelagoManager.HintableItem item = this.hintableItems[i];
                 float y = RowY(row++);
                 bool selected = i == this.selection;
-                bool hinted = IsHinted(item.Name);
+                int hintCount = CountHints(item.Name);
+                bool hinted = !item.Repeatable && hintCount > 0;
 
                 if (selected)
                 {
@@ -336,7 +337,16 @@ namespace Celeste.Mod.Celeste_Multiworld.UI
                 }
 
                 Color color = selected ? SelectedColor : (hinted ? DimColor : Color.White);
-                DrawRow(hinted ? $"{item.Name} (already hinted)" : item.Name, ContentLeft + 40f, 1050f, y, color);
+                string label = item.Name;
+                if (hinted)
+                {
+                    label += " (already hinted)";
+                }
+                else if (item.Repeatable && hintCount > 0)
+                {
+                    label += $" ({hintCount} hinted)";
+                }
+                DrawRow(label, ContentLeft + 40f, 1050f, y, color);
                 DrawRow(item.Category, 1250f, 300f, y, selected ? SelectedColor : DimColor);
             }
         }

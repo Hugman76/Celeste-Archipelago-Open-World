@@ -841,6 +841,8 @@ namespace Celeste.Mod.Celeste_Multiworld
         {
             public string Name;
             public string Category;
+            // Items with several copies, like Strawberries, can be hinted again and again
+            public bool Repeatable;
         }
 
         // Items of this slot that can still be useful to hint: the ones that may be in the seed and were not received yet
@@ -854,12 +856,20 @@ namespace Celeste.Mod.Celeste_Multiworld
 
             Celeste_MultiworldModuleSaveData saveData = Celeste_MultiworldModule.SaveData;
 
-            void Add(long itemID, string category)
+            // Each item is added on its own, so one unknown item cannot prevent the others from being listed
+            void Add(long itemID, string category, bool repeatable = false)
             {
-                string name = _session.Items.GetItemName(itemID);
-                if (!string.IsNullOrEmpty(name) && !items.Any(item => item.Name == name))
+                try
                 {
-                    items.Add(new HintableItem { Name = name, Category = category });
+                    string name = GetHintItemName(itemID);
+                    if (!string.IsNullOrEmpty(name) && !items.Any(item => item.Name == name))
+                    {
+                        items.Add(new HintableItem { Name = name, Category = category, Repeatable = repeatable });
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Logger.Error("AP", $"Unable to name item {itemID} for hints: {ex.Message}");
                 }
             }
 
@@ -867,7 +877,7 @@ namespace Celeste.Mod.Celeste_Multiworld
             {
                 if (saveData.Strawberries < this.StrawberriesRequired)
                 {
-                    Add(0xCA10000, "Goal");
+                    Add(0xCA10000, "Goal", true);
                 }
 
                 // Movement (with dash modes 2 and 3, diagonal dashes come from the cardinal ones)
@@ -921,6 +931,19 @@ namespace Celeste.Mod.Celeste_Multiworld
                     }
                 }
 
+                if (this.Checkpointsanity && SaveData.Instance != null)
+                {
+                    foreach (KeyValuePair<long, Items.CheckpointItemData> checkpoint in Items.APItemData.CheckpointData)
+                    {
+                        Items.CheckpointItemData data = checkpoint.Value;
+                        string levelName = $"{data.Area}{"abc"[data.Mode]}";
+                        if (this.ActiveLevels.Contains(levelName) && !SaveData.Instance.Areas_Safe[data.Area].Modes[data.Mode].Checkpoints.Contains(data.Room))
+                        {
+                            Add(checkpoint.Key, "Checkpoint");
+                        }
+                    }
+                }
+
                 if (this.RequireCassettes)
                 {
                     foreach (KeyValuePair<string, long> cassette in Items.APItemData.AreaModeToCassetteID)
@@ -953,6 +976,26 @@ namespace Celeste.Mod.Celeste_Multiworld
                     }
                 }
             }
+        }
+
+        // The server's name for an item of this slot, or the mod's own name when the server does not know it
+        private string GetHintItemName(long itemID)
+        {
+            string name = _session.Items.GetItemName(itemID);
+            if (!string.IsNullOrEmpty(name))
+            {
+                return name;
+            }
+
+            if (Items.APItemData.ItemIDToString.TryGetValue(itemID, out string localName))
+            {
+                return localName;
+            }
+            if (itemID >= 0xCA17000 && itemID < 0xCA1D030)
+            {
+                return Items.APItemData.ConvertInteractableName(itemID);
+            }
+            return null;
         }
 
         public bool CanAffordHint => this.HintPoints >= this.HintCost;
