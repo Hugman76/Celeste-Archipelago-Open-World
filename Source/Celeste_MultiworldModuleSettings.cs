@@ -52,5 +52,8 @@ public class Celeste_MultiworldModuleSettings : EverestModuleSettings
     public bool ActiveTrapsDisplay { get; set; } = true;
 
     public bool LocationItemPreview { get; set; } = true;
+
+    // Off by default, as it makes the Poetry Slam puzzle much easier
+    public bool PoetrySlamProgress { get; set; } = false;
     #endregion
 }

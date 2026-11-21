@@ -970,6 +970,7 @@ namespace Celeste.Mod.Celeste_Multiworld.UI
             On.Celeste.OuiJournalDeaths.ctor += modOuiJournalDeaths_ctor;
             On.Celeste.OuiJournalPoem.ctor += modOuiJournalPoem_ctor;
             On.Celeste.OuiJournalPoem.Swap += modOuiJournalPoem_Swap;
+            On.Celeste.OuiJournalPoem.Redraw += modOuiJournalPoem_Redraw;
             On.Celeste.OuiJournalGlobal.ctor += modOuiJournalGlobal_ctor;
             On.Celeste.OuiJournalGlobal.Redraw += modOuiJournalGlobal_Redraw;
         }
@@ -982,6 +983,7 @@ namespace Celeste.Mod.Celeste_Multiworld.UI
             On.Celeste.OuiJournalDeaths.ctor -= modOuiJournalDeaths_ctor;
             On.Celeste.OuiJournalPoem.ctor -= modOuiJournalPoem_ctor;
             On.Celeste.OuiJournalPoem.Swap -= modOuiJournalPoem_Swap;
+            On.Celeste.OuiJournalPoem.Redraw -= modOuiJournalPoem_Redraw;
             On.Celeste.OuiJournalGlobal.ctor -= modOuiJournalGlobal_ctor;
             On.Celeste.OuiJournalGlobal.Redraw -= modOuiJournalGlobal_Redraw;
         }
@@ -1795,6 +1797,42 @@ namespace Celeste.Mod.Celeste_Multiworld.UI
             yield return self.tween.Wait();
             self.swapping = false;
             yield break;
+        }
+
+        private static void modOuiJournalPoem_Redraw(On.Celeste.OuiJournalPoem.orig_Redraw orig, OuiJournalPoem self, Monocle.VirtualRenderTarget buffer)
+        {
+            orig(self, buffer);
+
+            if (ArchipelagoManager.Instance.GoalLevel != "poetry" || !Celeste_MultiworldModule.Settings.PoetrySlamProgress)
+            {
+                return;
+            }
+
+            int linesInPlace = CountPoemLinesInPlace();
+            int totalLines = PoemOrders[ArchipelagoManager.Instance.ChosenPoem].Count;
+            Color color = linesInPlace == totalLines ? new Color(30, 120, 40) : Color.Black * 0.7f;
+
+            Monocle.Draw.SpriteBatch.Begin();
+            ActiveFont.DrawOutline($"Lines in place: {linesInPlace} / {totalLines}", new Vector2(805f, 950f), new Vector2(0.5f, 0.5f), Vector2.One * 0.6f, color, 2f, Color.White);
+            Monocle.Draw.SpriteBatch.End();
+        }
+
+        // Same rule as the check that completes the Poetry Slam: each line must be at its position in the original poem
+        private static int CountPoemLinesInPlace()
+        {
+            List<string> poem = Poems[ArchipelagoManager.Instance.ChosenPoem];
+            List<int> order = PoemOrders[ArchipelagoManager.Instance.ChosenPoem];
+            List<string> lines = Celeste_MultiworldModule.SaveData.Poem;
+
+            int count = 0;
+            for (int i = 0; i < lines.Count && i < order.Count; i++)
+            {
+                if (poem.IndexOf(lines[i]) == order[i])
+                {
+                    count++;
+                }
+            }
+            return count;
         }
 
         private static void modOuiJournalGlobal_ctor(On.Celeste.OuiJournalGlobal.orig_ctor orig, OuiJournalGlobal self, OuiJournal journal)
