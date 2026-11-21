@@ -149,6 +149,22 @@ namespace Celeste.Mod.Celeste_Multiworld.UI
             }
         }
 
+        // In the chapter select, the Journal itself draws the paper behind its pages, which only hold their content
+        private void RenderPaper(Vector2 position)
+        {
+            string paper = this.pages[this.pageIndex].PageTexture;
+            if (MTN.Journal != null && !string.IsNullOrEmpty(paper) && MTN.Journal.Has(paper))
+            {
+                MTexture texture = MTN.Journal[paper];
+                Vector2 scale = new Vector2(PageWidth * PageScale / texture.Width, PageHeight * PageScale / texture.Height);
+                texture.Draw(position, Vector2.Zero, Color.White, scale);
+            }
+            else
+            {
+                Draw.Rect(position.X, position.Y, PageWidth * PageScale, PageHeight * PageScale, new Color(240, 232, 214));
+            }
+        }
+
         public override void Render()
         {
             Draw.Rect(0f, 0f, 1920f, 1080f, Color.Black * 0.85f);
@@ -156,6 +172,7 @@ namespace Celeste.Mod.Celeste_Multiworld.UI
             if (this.drawnOnce && this.buffer != null)
             {
                 Vector2 position = new Vector2((1920f - PageWidth * PageScale) / 2f, 20f);
+                RenderPaper(position);
                 Draw.SpriteBatch.Draw(this.buffer.Target, position, null, Color.White, 0f, Vector2.Zero, PageScale, Microsoft.Xna.Framework.Graphics.SpriteEffects.None, 0f);
             }
 
