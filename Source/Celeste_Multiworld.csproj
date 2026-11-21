@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk" InitialTargets="CheckCelestePrefix">
 
     <PropertyGroup>
         <TargetFramework>net8.0</TargetFramework>
@@ -7,6 +7,8 @@
         <LangVersion>latest</LangVersion>
         <CelestePrefix Condition="'$(CelestePrefix)' == '' And Exists('..\..\..\Celeste.dll')">..\..\..</CelestePrefix>
         <CelestePrefix Condition="'$(CelestePrefix)' == ''">lib-stripped</CelestePrefix>
+        <!-- Folder holding Archipelago.MultiClient.Net.dll. Can be overridden with -p:ArchipelagoMultiClientDir=<folder>; the NuGet package is used when it does not exist -->
+        <ArchipelagoMultiClientDir Condition="'$(ArchipelagoMultiClientDir)' == ''">../../../../../Archipelago.Multiclient.NET/Archipelago.MultiClient.Net/Archipelago.MultiClient.Net/bin/Debug/net6.0</ArchipelagoMultiClientDir>
         <ZippedFiles>..\everest.yaml;..\bin\**\*.*;..\Audio\**\*.*;..\Dialog\**\*.*;..\Graphics\**\*.*;..\Ahorn\**\*.*;..\Loenn\**\*.*</ZippedFiles>
     </PropertyGroup>
 
@@ -16,9 +18,22 @@
         <Reference Private="false" />
     </ItemDefinitionGroup>
 
+    <ItemGroup Condition="Exists('$(ArchipelagoMultiClientDir)/Archipelago.MultiClient.Net.dll')">
+        <Reference Include="$(ArchipelagoMultiClientDir)/Archipelago.MultiClient.Net.dll" />
+    </ItemGroup>
+    <ItemGroup Condition="!Exists('$(ArchipelagoMultiClientDir)/Archipelago.MultiClient.Net.dll')">
+        <PackageReference Include="Archipelago.MultiClient.Net" Version="6.6.1" />
+    </ItemGroup>
+
+    <!-- Newtonsoft.Json comes with the Archipelago client build, or else with Everest -->
+    <ItemGroup Condition="Exists('$(ArchipelagoMultiClientDir)/Newtonsoft.Json.dll')">
+        <Reference Include="$(ArchipelagoMultiClientDir)/Newtonsoft.Json.dll" />
+    </ItemGroup>
+    <ItemGroup Condition="!Exists('$(ArchipelagoMultiClientDir)/Newtonsoft.Json.dll') And Exists('$(CelestePrefix)/Newtonsoft.Json.dll')">
+        <Reference Include="$(CelestePrefix)/Newtonsoft.Json.dll" />
+    </ItemGroup>
+
     <ItemGroup>
-        <Reference Include="../../../../../Archipelago.Multiclient.NET/Archipelago.MultiClient.Net/Archipelago.MultiClient.Net/bin/Debug/net6.0/Archipelago.MultiClient.Net.dll" />
-        <Reference Include="../../../../../Archipelago.Multiclient.NET/Archipelago.MultiClient.Net/Archipelago.MultiClient.Net/bin/Debug/net6.0/Newtonsoft.Json.dll" />
         <PackageReference Include="MonoMod.RuntimeDetour" Version="25.2.3" PrivateAssets="all" ExcludeAssets="runtime" />
         <PackageReference Include="MonoMod.Patcher" Version="25.0.0-prerelease.2" />
         <PackageReference Include="CelesteAnalyzer" Version="*" />
@@ -42,6 +57,10 @@
         <PackageMod Files="@(FilesToPackage)" OutputPath="..\Celeste_Multiworld.zip" />
     </Target>
     
+    <Target Name="CheckCelestePrefix">
+        <Error Condition="!Exists('$(CelestePrefix)/Celeste.dll')" Text="Celeste.dll was not found in '$(CelestePrefix)'. Clone this repository into Celeste/Mods, or build with -p:CelestePrefix=&lt;Celeste install folder&gt; (with Everest installed)." />
+    </Target>
+
     <PropertyGroup>
         <PathMap>$(MSBuildProjectDirectory)=Celeste_Multiworld/</PathMap>
     </PropertyGroup>
