@@ -837,6 +837,132 @@ namespace Celeste.Mod.Celeste_Multiworld
             return result;
         }
 
+        public struct HintableItem
+        {
+            public string Name;
+            public string Category;
+        }
+
+        // Items of this slot that can still be useful to hint: the ones that may be in the seed and were not received yet
+        public List<HintableItem> GetHintableItems()
+        {
+            List<HintableItem> items = new List<HintableItem>();
+            if (_session == null)
+            {
+                return items;
+            }
+
+            Celeste_MultiworldModuleSaveData saveData = Celeste_MultiworldModule.SaveData;
+
+            void Add(long itemID, string category)
+            {
+                string name = _session.Items.GetItemName(itemID);
+                if (!string.IsNullOrEmpty(name) && !items.Any(item => item.Name == name))
+                {
+                    items.Add(new HintableItem { Name = name, Category = category });
+                }
+            }
+
+            try
+            {
+                if (saveData.Strawberries < this.StrawberriesRequired)
+                {
+                    Add(0xCA10000, "Goal");
+                }
+
+                // Movement (with dash modes 2 and 3, diagonal dashes come from the cardinal ones)
+                if (this.DashShuffle >= 0)
+                {
+                    bool diagonalItems = this.DashShuffle != 2 && this.DashShuffle != 3;
+                    if (!saveData.UpDash) Add(0xCA10081, "Movement");
+                    if (!saveData.UpRightDash && diagonalItems) Add(0xCA10082, "Movement");
+                    if (!saveData.RightDash) Add(0xCA10083, "Movement");
+                    if (!saveData.DownRightDash && diagonalItems) Add(0xCA10084, "Movement");
+                    if (!saveData.DownDash) Add(0xCA10085, "Movement");
+                    if (!saveData.DownLeftDash && diagonalItems) Add(0xCA10086, "Movement");
+                    if (!saveData.LeftDash) Add(0xCA10087, "Movement");
+                    if (!saveData.UpLeftDash && diagonalItems) Add(0xCA10088, "Movement");
+                }
+                if (this.ClimbShuffle >= 0)
+                {
+                    if (!saveData.RightClimb) Add(0xCA1008A, "Movement");
+                    if (!saveData.LeftClimb) Add(0xCA1008B, "Movement");
+                }
+                if (this.CrouchShuffle && !saveData.Crouch)
+                {
+                    Add(0xCA1008C, "Movement");
+                }
+
+                foreach (long interactable in this.ExistentInteractables)
+                {
+                    if (!saveData.Interactables.TryGetValue(interactable, out bool have) || !have)
+                    {
+                        Add(interactable, "Interactable");
+                    }
+                }
+
+                if (this.Keysanity)
+                {
+                    AddKeys(0xCA16000, 0xCA16004, "3a");
+                    AddKeys(0xCA16005, 0xCA16009, "5a");
+                    AddKeys(0xCA1600A, 0xCA1600B, "5b");
+                    AddKeys(0xCA1600C, 0xCA1600C, "7a");
+                    AddKeys(0xCA1600D, 0xCA16011, "10a");
+                }
+
+                if (this.Gemsanity && this.ActiveLevels.Contains("7a"))
+                {
+                    for (long gem = 0xCA16A00; gem <= 0xCA16A05; gem++)
+                    {
+                        if (!saveData.GemItems.TryGetValue(gem, out bool have) || !have)
+                        {
+                            Add(gem, "Gem");
+                        }
+                    }
+                }
+
+                if (this.RequireCassettes)
+                {
+                    foreach (KeyValuePair<string, long> cassette in Items.APItemData.AreaModeToCassetteID)
+                    {
+                        if (this.ActiveLevels.Contains(cassette.Key) && (!saveData.CassetteItems.TryGetValue(cassette.Value, out bool have) || !have))
+                        {
+                            Add(cassette.Value, "Cassette");
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("AP", $"Unable to list hintable items: {ex.Message}");
+            }
+
+            return items;
+
+            void AddKeys(long first, long last, string level)
+            {
+                if (!this.ActiveLevels.Contains(level))
+                {
+                    return;
+                }
+                for (long key = first; key <= last; key++)
+                {
+                    if (!saveData.KeyItems.TryGetValue(key, out bool have) || !have)
+                    {
+                        Add(key, "Key");
+                    }
+                }
+            }
+        }
+
+        public bool CanAffordHint => this.HintPoints >= this.HintCost;
+
+        // Asks the server for a hint about one of this slot's items, as typing "!hint <item>" would
+        public bool RequestHint(string itemName)
+        {
+            return SendChatMessage($"!hint {itemName}");
+        }
+
         public struct HintDisplayInfo
         {
             public string ItemName;
