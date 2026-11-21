@@ -115,6 +115,19 @@ namespace Celeste.Mod.Celeste_Multiworld
         public HashSet<long> SentLocations { get; set; } = [];
         public List<ArchipelagoMessage> MessageLog { get; set; } = new();
 
+        public struct MessageHistoryEntry
+        {
+            public DateTime Time;
+            public string Text;
+            public ArchipelagoMessage.MessageType Type;
+        }
+
+        public const int MaxMessageHistory = 200;
+        private readonly object messageHistoryLock = new object();
+        private readonly List<MessageHistoryEntry> messageHistory = new();
+        // Incremented whenever the history changes, so displays know when to refresh
+        public int MessageHistoryVersion { get; private set; } = 0;
+
         public int Slot => _session.ConnectionInfo.Slot;
         public bool DeathLink => _session.ConnectionInfo.Tags.Contains("DeathLink");
         public int HintPoints => _session?.RoomState.HintPoints ?? 0;
@@ -455,6 +468,8 @@ namespace Celeste.Mod.Celeste_Multiworld
             if (!attemptReconnect)
             {
                 this.WasConnected = false;
+                // The history only survives reconnections, not a return to the main menu
+                ClearMessageHistory();
             }
 
             // Clear DeathLink events.
@@ -533,8 +548,58 @@ namespace Celeste.Mod.Celeste_Multiworld
             }
 
             // DeathLinks take priority over the rest of the queue, as they explain what just happened
-            this.MessageLog.Insert(0, new ArchipelagoMessage(this.PendingDeathLinkMessage, ArchipelagoMessage.MessageType.DeathLink));
+            this.QueueMessage(new ArchipelagoMessage(this.PendingDeathLinkMessage, ArchipelagoMessage.MessageType.DeathLink), true);
             this.PendingDeathLinkMessage = null;
+        }
+
+        // Queues a message to be shown as a popup, and keeps it in the message history
+        public void QueueMessage(ArchipelagoMessage message, bool priority = false)
+        {
+            if (priority)
+            {
+                this.MessageLog.Insert(0, message);
+            }
+            else
+            {
+                this.MessageLog.Add(message);
+            }
+
+            RecordMessage(message);
+        }
+
+        public void RecordMessage(ArchipelagoMessage message)
+        {
+            if (message.Type == ArchipelagoMessage.MessageType.Literature)
+            {
+                return;
+            }
+
+            lock (this.messageHistoryLock)
+            {
+                this.messageHistory.Add(new MessageHistoryEntry { Time = DateTime.Now, Text = message.Text, Type = message.Type });
+                if (this.messageHistory.Count > MaxMessageHistory)
+                {
+                    this.messageHistory.RemoveRange(0, this.messageHistory.Count - MaxMessageHistory);
+                }
+                this.MessageHistoryVersion++;
+            }
+        }
+
+        public List<MessageHistoryEntry> GetMessageHistory()
+        {
+            lock (this.messageHistoryLock)
+            {
+                return new List<MessageHistoryEntry>(this.messageHistory);
+            }
+        }
+
+        private void ClearMessageHistory()
+        {
+            lock (this.messageHistoryLock)
+            {
+                this.messageHistory.Clear();
+                this.MessageHistoryVersion++;
+            }
         }
 
         // Text sent by other players must not be able to inject FancyText commands
@@ -871,7 +936,12 @@ namespace Celeste.Mod.Celeste_Multiworld
                             string recvPlayerColor = (hintItemSendMessage.Receiver == this.Slot) ? "#EE00EE" : "#FAFAD2";
                             string prettyMessage = $"{{{recvPlayerColor}}}{hintItemSendMessage.Receiver.Name}{{#}}'s {{{itemColor}}}{item.ItemName}{{#}} is at {{#00FF7F}}{hintItemSendMessage.Item.LocationName}{{#}} in {{{sendPlayerColor}}}{hintItemSendMessage.Sender.Name}{{#}}'s World.";
 
-                            MessageLog.Add(new ArchipelagoMessage(prettyMessage, ArchipelagoMessage.MessageType.ItemHint));
+                            QueueMessage(new ArchipelagoMessage(prettyMessage, ArchipelagoMessage.MessageType.ItemHint));
+                        }
+                        else
+                        {
+                            // Found hints are not worth a popup, but are kept in the message history
+                            RecordMessage(new ArchipelagoMessage(message.ToString(), ArchipelagoMessage.MessageType.ItemHint));
                         }
                         Logger.Log("AP", message.ToString());
                         Monocle.Engine.Commands.Log(message.ToString(), M_Color.Orange);
@@ -885,7 +955,7 @@ namespace Celeste.Mod.Celeste_Multiworld
                         string itemColor = GetColorString(itemSendMessage.Item.Flags);
                         string prettyMessage = $"Sent {{{itemColor}}}{itemSendMessage.Item.ItemName}{{#}} to {{#FAFAD2}}{itemSendMessage.Receiver.Name}{{#}}.";
 
-                        MessageLog.Add(new ArchipelagoMessage(prettyMessage.ToString(), ArchipelagoMessage.MessageType.ItemSend, itemSendMessage.Item.Flags));
+                        QueueMessage(new ArchipelagoMessage(prettyMessage.ToString(), ArchipelagoMessage.MessageType.ItemSend, itemSendMessage.Item.Flags));
                         Logger.Log("AP", message.ToString());
                         Monocle.Engine.Commands.Log(message.ToString(), M_Color.Lime);
                     }
@@ -894,15 +964,15 @@ namespace Celeste.Mod.Celeste_Multiworld
                 case ServerChatLogMessage:
                 case CountdownLogMessage:
                     Monocle.Engine.Commands.Log(message.ToString());
-                    MessageLog.Add(new ArchipelagoMessage(message.ToString(), ArchipelagoMessage.MessageType.Server));
+                    QueueMessage(new ArchipelagoMessage(message.ToString(), ArchipelagoMessage.MessageType.Server));
                     break;
                 case ChatLogMessage:
                     Monocle.Engine.Commands.Log(message.ToString());
-                    MessageLog.Add(new ArchipelagoMessage(message.ToString(), ArchipelagoMessage.MessageType.Chat));
+                    QueueMessage(new ArchipelagoMessage(message.ToString(), ArchipelagoMessage.MessageType.Chat));
                     break;
                 case GoalLogMessage:
                     Monocle.Engine.Commands.Log(message.ToString(), M_Color.Gold);
-                    MessageLog.Add(new ArchipelagoMessage(message.ToString()));
+                    QueueMessage(new ArchipelagoMessage(message.ToString()));
                     break;
             }
         }
@@ -974,7 +1044,7 @@ namespace Celeste.Mod.Celeste_Multiworld
                 if ((item.ItemId < 0xCA10020 || item.ItemId >= 0xCA10050) && index >= this.ServerItemsRcv)
                 {
                     Logger.Info("AP", receivedMessage);
-                    MessageLog.Add(new ArchipelagoMessage(prettyMessage, ArchipelagoMessage.MessageType.ItemReceive, item.Flags));
+                    QueueMessage(new ArchipelagoMessage(prettyMessage, ArchipelagoMessage.MessageType.ItemReceive, item.Flags));
                     Monocle.Engine.Commands.Log(receivedMessage, M_Color.DeepPink);
                 }
 

@@ -397,7 +397,7 @@ namespace Celeste.Mod.Celeste_Multiworld.Items.Traps
 
                 Logger.Info("AP", this.PriorityTrap.message);
                 ArchipelagoMessage message = new ArchipelagoMessage(this.PriorityTrap.message, ArchipelagoMessage.MessageType.ItemReceive, Archipelago.MultiClient.Net.Enums.ItemFlags.Trap);
-                ArchipelagoManager.Instance.MessageLog.Insert(0, message);
+                ArchipelagoManager.Instance.QueueMessage(message, true);
                 Monocle.Engine.Commands.Log(this.PriorityTrap.message, M_Color.DeepPink);
                 Audio.Play(SFX.game_gen_bird_squawk);
             }
@@ -417,7 +417,7 @@ namespace Celeste.Mod.Celeste_Multiworld.Items.Traps
 
                     Logger.Info("AP", newTrap.message);
                     ArchipelagoMessage message = new ArchipelagoMessage(newTrap.message, ArchipelagoMessage.MessageType.ItemReceive, Archipelago.MultiClient.Net.Enums.ItemFlags.Trap);
-                    ArchipelagoManager.Instance.MessageLog.Insert(0, message);
+                    ArchipelagoManager.Instance.QueueMessage(message, true);
                     Monocle.Engine.Commands.Log(newTrap.message, M_Color.DeepPink);
                     Audio.Play(SFX.game_gen_bird_squawk);
 
