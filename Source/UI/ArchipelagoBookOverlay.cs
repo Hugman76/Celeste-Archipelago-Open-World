@@ -15,8 +15,8 @@ namespace Celeste.Mod.Celeste_Multiworld.UI
         private const float InputDelay = 0.15f;
 
         private readonly Level level;
-        private readonly int returnIndex;
-        private readonly bool minimal;
+        // Called once the book is closed, to reopen the menu it was opened from
+        private readonly Action onClose;
 
         private OuiJournal journal;
         private List<OuiJournalPage> pages;
@@ -27,11 +27,11 @@ namespace Celeste.Mod.Celeste_Multiworld.UI
         private float inputDelayTimer = InputDelay;
         private bool closing = false;
 
-        public ArchipelagoBookOverlay(Level level, int returnIndex, bool minimal)
+        public ArchipelagoBookOverlay(Level level, Action onClose, int startPage = 0)
         {
             this.level = level;
-            this.returnIndex = returnIndex;
-            this.minimal = minimal;
+            this.onClose = onClose;
+            this.pageIndex = startPage;
 
             base.Depth = -10000;
             base.Tag = Tags.HUD | Tags.PauseUpdate;
@@ -57,6 +57,7 @@ namespace Celeste.Mod.Celeste_Multiworld.UI
             {
                 this.pages[i].PageIndex = i;
             }
+            this.pageIndex = Math.Clamp(this.pageIndex, 0, Math.Max(0, this.pages.Count - 1));
         }
 
         public override void Removed(Scene scene)
@@ -85,7 +86,7 @@ namespace Celeste.Mod.Celeste_Multiworld.UI
             this.closing = true;
             Audio.Play("event:/ui/main/button_back");
             RemoveSelf();
-            this.level.Pause(this.returnIndex, this.minimal, false);
+            this.onClose?.Invoke();
         }
 
         // Pages are drawn into their buffer during the update, as the chapter select Journal does, never in the middle of rendering

@@ -29,9 +29,8 @@ namespace Celeste.Mod.Celeste_Multiworld.UI
             public Color Color;
         }
 
-        private readonly Level level;
-        private readonly int returnIndex;
-        private readonly bool minimal;
+        // Called once the overlay is closed, to reopen the menu it was opened from
+        private readonly Action onClose;
 
         private string input = "";
         private string status = "";
@@ -45,11 +44,9 @@ namespace Celeste.Mod.Celeste_Multiworld.UI
         // How many lines the view is scrolled up from the newest message
         private int scrollOffset = 0;
 
-        public MessagesOverlay(Level level, int returnIndex, bool minimal)
+        public MessagesOverlay(Action onClose)
         {
-            this.level = level;
-            this.returnIndex = returnIndex;
-            this.minimal = minimal;
+            this.onClose = onClose;
 
             base.Depth = -10000;
             base.Tag = Tags.HUD | Tags.PauseUpdate;
@@ -124,7 +121,7 @@ namespace Celeste.Mod.Celeste_Multiworld.UI
             this.closing = true;
             Audio.Play("event:/ui/main/button_back");
             RemoveSelf();
-            this.level.Pause(this.returnIndex, this.minimal, false);
+            this.onClose?.Invoke();
         }
 
         private bool GamepadPressed(Buttons button)
