@@ -66,6 +66,7 @@ public class Celeste_MultiworldModule : EverestModule
         heartGate.Load();
 
         modMiniTextbox.Load();
+        MessagesOverlay.Load();
     }
 
     public override void Unload()
@@ -89,5 +90,6 @@ public class Celeste_MultiworldModule : EverestModule
         heartGate.Unload();
 
         modMiniTextbox.Unload();
+        MessagesOverlay.Unload();
     }
 }

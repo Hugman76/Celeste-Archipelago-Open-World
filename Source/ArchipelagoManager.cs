@@ -895,6 +895,31 @@ namespace Celeste.Mod.Celeste_Multiworld
             }
         }
 
+        // Sends chat text (or a server command such as !hint) to the server, as the console's !ap command does
+        public bool SendChatMessage(string text)
+        {
+            if (!this.Ready || string.IsNullOrWhiteSpace(text))
+            {
+                return false;
+            }
+
+            try
+            {
+                _session.Say(text);
+                return true;
+            }
+            catch (ArchipelagoSocketClosedException)
+            {
+                Disconnect();
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("AP", $"Unable to send message: {ex.Message}");
+            }
+
+            return false;
+        }
+
         private static string GetColorString(ItemFlags flags)
         {
             string itemColor = "";
