@@ -156,6 +156,11 @@ namespace Celeste.Mod.Celeste_Multiworld
         public int GoldenAmnesty { get; set; }
         public bool IncludeCore = false;
         public bool IncludeFarewell = false;
+        // 0: None, 1: Empty Space only, 2: Empty Space and Farewell
+        public int IncludeFarewellMode = 0;
+        public bool Checkpointsanity = false;
+        public bool Keysanity = false;
+        public bool Gemsanity = false;
         public bool IncludeBSides = false;
         public bool IncludeCSides = false;
         public List<string> ActiveLevels { get; set; } = new();
@@ -335,6 +340,10 @@ namespace Celeste.Mod.Celeste_Multiworld
             GoldenAmnesty = Convert.ToInt32(((LoginSuccessful)result).SlotData.TryGetValue("golden_amnesty", out value) ? value : 1);
             IncludeCore = Convert.ToBoolean(((LoginSuccessful)result).SlotData.TryGetValue("include_core", out value) ? value : false);
             IncludeFarewell = Convert.ToBoolean(((LoginSuccessful)result).SlotData.TryGetValue("include_farewell", out value) ? value : false);
+            IncludeFarewellMode = Convert.ToInt32(((LoginSuccessful)result).SlotData.TryGetValue("include_farewell", out value) ? value : 0);
+            Checkpointsanity = Convert.ToBoolean(((LoginSuccessful)result).SlotData.TryGetValue("checkpointsanity", out value) ? value : false);
+            Keysanity = Convert.ToBoolean(((LoginSuccessful)result).SlotData.TryGetValue("keysanity", out value) ? value : false);
+            Gemsanity = Convert.ToBoolean(((LoginSuccessful)result).SlotData.TryGetValue("gemsanity", out value) ? value : false);
             IncludeBSides = Convert.ToBoolean(((LoginSuccessful)result).SlotData.TryGetValue("include_b_sides", out value) ? value : false);
             IncludeCSides = Convert.ToBoolean(((LoginSuccessful)result).SlotData.TryGetValue("include_c_sides", out value) ? value : false);
 
