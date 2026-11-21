@@ -714,6 +714,33 @@ namespace Celeste.Mod.Celeste_Multiworld
             return string.IsNullOrEmpty(name) ? $"Unknown Item {item}" : name;
         }
 
+        // Names of this slot's locations that have not been checked yet, according to the server
+        public List<string> GetMissingLocationNames()
+        {
+            List<string> names = new List<string>();
+
+            try
+            {
+                if (_session != null)
+                {
+                    foreach (long location in _session.Locations.AllMissingLocations.OrderBy(location => location))
+                    {
+                        // Locations checked locally but not acknowledged by the server yet are not missing anymore
+                        if (!this.SentLocations.Contains(location))
+                        {
+                            names.Add(GetLocationName(location));
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("AP", $"Unable to list missing locations: {ex.Message}");
+            }
+
+            return names;
+        }
+
         // What the given location of this slot holds, from the scouting done on connection
         public bool TryGetLocationItem(long locationID, out string itemName, out string receiverName, out bool forThisSlot, out ItemFlags flags)
         {

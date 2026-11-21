@@ -1073,6 +1073,7 @@ namespace Celeste.Mod.Celeste_Multiworld.UI
             }
 
             self.Pages.Add(new OuiJournalSeedSettings(self));
+            self.Pages.AddRange(OuiJournalMissing.CreatePages(self));
 
             int num = 0;
             foreach (OuiJournalPage ouiJournalPage in self.Pages)
