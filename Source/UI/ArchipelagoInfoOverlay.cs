@@ -54,29 +54,6 @@ namespace Celeste.Mod.Celeste_Multiworld.UI
         private int hintsVersion = -1;
         private float refreshTimer = 0f;
 
-        public static void Load()
-        {
-            Everest.Events.Level.OnCreatePauseMenuButtons += AddPauseMenuButton;
-        }
-
-        public static void Unload()
-        {
-            Everest.Events.Level.OnCreatePauseMenuButtons -= AddPauseMenuButton;
-        }
-
-        private static void AddPauseMenuButton(Level level, TextMenu menu, bool minimal)
-        {
-            TextMenu.Button button = new TextMenu.Button("Archipelago Hints and Players");
-            button.Pressed(() =>
-            {
-                int returnIndex = menu.items.IndexOf(button);
-                menu.RemoveSelf();
-                level.PauseMainMenuOpen = false;
-                level.Add(new ArchipelagoInfoOverlay(level, returnIndex, minimal));
-            });
-            menu.Add(button);
-        }
-
         public ArchipelagoInfoOverlay(Level level, int returnIndex, bool minimal)
         {
             this.level = level;

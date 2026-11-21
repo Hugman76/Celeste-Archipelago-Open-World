@@ -45,29 +45,6 @@ namespace Celeste.Mod.Celeste_Multiworld.UI
         // How many lines the view is scrolled up from the newest message
         private int scrollOffset = 0;
 
-        public static void Load()
-        {
-            Everest.Events.Level.OnCreatePauseMenuButtons += AddPauseMenuButton;
-        }
-
-        public static void Unload()
-        {
-            Everest.Events.Level.OnCreatePauseMenuButtons -= AddPauseMenuButton;
-        }
-
-        private static void AddPauseMenuButton(Level level, TextMenu menu, bool minimal)
-        {
-            TextMenu.Button button = new TextMenu.Button("Archipelago Messages");
-            button.Pressed(() =>
-            {
-                int returnIndex = menu.items.IndexOf(button);
-                menu.RemoveSelf();
-                level.PauseMainMenuOpen = false;
-                level.Add(new MessagesOverlay(level, returnIndex, minimal));
-            });
-            menu.Add(button);
-        }
-
         public MessagesOverlay(Level level, int returnIndex, bool minimal)
         {
             this.level = level;
