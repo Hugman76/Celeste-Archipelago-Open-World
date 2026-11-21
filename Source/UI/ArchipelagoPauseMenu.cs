@@ -21,6 +21,7 @@ namespace Celeste.Mod.Celeste_Multiworld.UI
             // An empty, non-selectable line as a small gap above the Archipelago entries
             menu.Add(new TextMenu.SubHeader(""));
 
+            AddOverlayButton("Archipelago Book", level, menu, minimal, returnIndex => new ArchipelagoBookOverlay(level, returnIndex, minimal));
             AddOverlayButton("Archipelago Messages", level, menu, minimal, returnIndex => new MessagesOverlay(level, returnIndex, minimal));
             AddOverlayButton("Archipelago Hints and Players", level, menu, minimal, returnIndex => new ArchipelagoInfoOverlay(level, returnIndex, minimal));
         }
