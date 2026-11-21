@@ -136,6 +136,7 @@ namespace Celeste.Mod.Celeste_Multiworld
 
         // Kept up to date by the server, so it can be read at any time without a network round trip
         public Hint[] TrackedHints { get; private set; } = Array.Empty<Hint>();
+        public ConcurrentDictionary<int, ArchipelagoClientState> PlayerStatuses { get; private set; } = new();
 
         public int ServerItemsRcv = -1;
         private bool ItemRcvCallbackSet = false;
@@ -240,6 +241,7 @@ namespace Celeste.Mod.Celeste_Multiworld
             this.MessageLog.Clear();
             this.PendingDeathLinkMessage = null;
             this.TrackedHints = Array.Empty<Hint>();
+            this.PlayerStatuses = new ConcurrentDictionary<int, ArchipelagoClientState>();
             this._lastDeath = DateTime.MinValue;
 
             // Watch for the following events.
@@ -397,6 +399,8 @@ namespace Celeste.Mod.Celeste_Multiworld
             {
                 Logger.Error("AP", $"Unable to track hints: {ex.Message}");
             }
+
+            TrackPlayerStatuses();
 
             // TODO: Wrap this and only do if active
             //AddPlayerListCallback($"Celeste_OtherPlayers_List", PlayerListUpdated);
@@ -762,6 +766,75 @@ namespace Celeste.Mod.Celeste_Multiworld
             receiverName = receiver == null ? "Unknown Player" : GetPlayerName(receiver.Slot);
             flags = info.Flags;
             return true;
+        }
+
+        private void TrackPlayerStatuses()
+        {
+            ConcurrentDictionary<int, ArchipelagoClientState> statuses = this.PlayerStatuses;
+
+            try
+            {
+                int team = _session.ConnectionInfo.Team;
+                foreach (PlayerInfo player in _session.Players.AllPlayers)
+                {
+                    if (player.Slot == 0 || player.IsGroup || player.Team != team)
+                    {
+                        continue;
+                    }
+
+                    int slot = player.Slot;
+                    _session.DataStorage.TrackClientStatus(state => { statuses[slot] = state; }, true, slot, team);
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("AP", $"Unable to track player statuses: {ex.Message}");
+            }
+        }
+
+        public struct PlayerDisplayInfo
+        {
+            public string Name;
+            public string Game;
+            public ArchipelagoClientState Status;
+            public bool IsThisSlot;
+        }
+
+        // Every player of this team with their game and status, in slot order
+        public List<PlayerDisplayInfo> GetPlayerDisplayList()
+        {
+            List<PlayerDisplayInfo> result = new List<PlayerDisplayInfo>();
+
+            if (_session == null)
+            {
+                return result;
+            }
+
+            try
+            {
+                int team = _session.ConnectionInfo.Team;
+                foreach (PlayerInfo player in _session.Players.AllPlayers.OrderBy(player => player.Slot))
+                {
+                    if (player.Slot == 0 || player.IsGroup || player.Team != team)
+                    {
+                        continue;
+                    }
+
+                    result.Add(new PlayerDisplayInfo
+                    {
+                        Name = GetPlayerName(player.Slot),
+                        Game = player.Game,
+                        Status = this.PlayerStatuses.TryGetValue(player.Slot, out ArchipelagoClientState status) ? status : ArchipelagoClientState.ClientUnknown,
+                        IsThisSlot = player.Slot == this.Slot,
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("AP", $"Unable to list players: {ex.Message}");
+            }
+
+            return result;
         }
 
         public struct HintDisplayInfo
