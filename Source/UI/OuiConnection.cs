@@ -15,6 +15,12 @@ namespace Celeste.Mod.Celeste_Multiworld.UI
     {
         public static OuiConnection Instance;
         private TextMenu connectMenu;
+        private List<TextMenu.SubHeader> errorLines = new List<TextMenu.SubHeader>();
+
+        private const int ErrorLineCount = 3;
+        private const int ErrorLineLength = 60;
+        // A single space keeps each line's height constant, so the menu does not need to be re-laid out when the text changes.
+        private const string BlankErrorLine = " ";
 
         private bool waitingOnConnect = false;
         private Task<LoginFailure> connectTask;
@@ -39,7 +45,9 @@ namespace Celeste.Mod.Celeste_Multiworld.UI
                     else
                     {
                         (this.connectMenu.items[6] as TextMenu.Header).Title = "Connection Failed";
-                        Logger.Error("AP", "Connection Failed.");
+                        string reason = ArchipelagoManager.DescribeLoginFailure(connectTask.Result);
+                        SetErrorText(reason);
+                        Logger.Error("AP", $"Connection Failed: {reason}");
                         connectTask = null;
                         waitingOnConnect = false;
                         return;
@@ -48,6 +56,7 @@ namespace Celeste.Mod.Celeste_Multiworld.UI
                 else if (this.connectMenu != null)
                 {
                     (this.connectMenu.items[6] as TextMenu.Header).Title = "Connecting...";
+                    SetErrorText("");
                     return;
                 }
                 else
@@ -146,7 +155,66 @@ namespace Celeste.Mod.Celeste_Multiworld.UI
             TextMenu.Button connectButton = new TextMenu.Button("Connect");
             retMenu.Add(connectButton);
 
+            // Lines used to explain why a connection attempt failed. They come after every selectable item so the indices above stay unchanged.
+            this.errorLines.Clear();
+            for (int i = 0; i < ErrorLineCount; i++)
+            {
+                TextMenu.SubHeader errorLine = new TextMenu.SubHeader(BlankErrorLine, i == 0);
+                this.errorLines.Add(errorLine);
+                retMenu.Add(errorLine);
+            }
+
             return retMenu;
+        }
+
+        private void SetErrorText(string text)
+        {
+            List<string> lines = WrapText(text ?? "", ErrorLineLength);
+
+            for (int i = 0; i < this.errorLines.Count; i++)
+            {
+                if (i < lines.Count)
+                {
+                    string line = lines[i];
+                    if (i == this.errorLines.Count - 1 && lines.Count > this.errorLines.Count)
+                    {
+                        line += "...";
+                    }
+                    this.errorLines[i].Title = line;
+                }
+                else
+                {
+                    this.errorLines[i].Title = BlankErrorLine;
+                }
+            }
+        }
+
+        private static List<string> WrapText(string text, int maxLineLength)
+        {
+            List<string> lines = new List<string>();
+            StringBuilder current = new StringBuilder();
+
+            foreach (string word in text.Split(new char[] { ' ', '\n' }, StringSplitOptions.RemoveEmptyEntries))
+            {
+                if (current.Length > 0 && current.Length + 1 + word.Length > maxLineLength)
+                {
+                    lines.Add(current.ToString());
+                    current.Clear();
+                }
+
+                if (current.Length > 0)
+                {
+                    current.Append(' ');
+                }
+                current.Append(word);
+            }
+
+            if (current.Length > 0)
+            {
+                lines.Add(current.ToString());
+            }
+
+            return lines;
         }
 
         public void RefreshConnectionMenu()

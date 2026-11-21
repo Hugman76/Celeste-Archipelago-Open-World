@@ -237,7 +237,7 @@ namespace Celeste.Mod.Celeste_Multiworld
                 Disconnect();
                 string message = $"Unable to establish an initial connection to the Archipelago server @ {Celeste_MultiworldModule.Settings.Address} : {ex.Message}";
                 Monocle.Engine.Commands.Log(message, M_Color.Red);
-                return new(message);
+                return new($"Could not reach the server at {Celeste_MultiworldModule.Settings.Address}: {ex.GetBaseException().Message}");
             }
 
             var result = await _session.LoginAsync(
@@ -271,7 +271,7 @@ namespace Celeste.Mod.Celeste_Multiworld
                 int minor = (_minAPWorldVersion / 100) % 100;
                 int bugfix = _minAPWorldVersion % 100;
                 Monocle.Engine.Commands.Log($"Mod is too new for APWorld.\nUpdate your APWorld to v{major}.{minor}.{bugfix} and regenerate, or downgrade your mod.", M_Color.Red);
-                return new("Mod Version Too New");
+                return new($"Mod is too new for this APWorld. Update your APWorld to v{major}.{minor}.{bugfix} and regenerate, or downgrade your mod.");
             }
             if (_modVersion < minModVersion)
             {
@@ -281,7 +281,7 @@ namespace Celeste.Mod.Celeste_Multiworld
                 int minor = (minModVersion / 100) % 100;
                 int bugfix = minModVersion % 100;
                 Monocle.Engine.Commands.Log($"Mod is too old for APWorld.\nUpdate your mod to v{major}.{minor}.{bugfix}.", M_Color.Red);
-                return new("Mod Version Too Old");
+                return new($"Mod is too old for this APWorld. Update your mod to v{major}.{minor}.{bugfix}.");
             }
 
             int apworld_major = apworldVersion / 10000;
@@ -373,6 +373,40 @@ namespace Celeste.Mod.Celeste_Multiworld
             this.ReconnectAttemptCount = 0;
             this.AttemptingConnect = false;
             return null;
+        }
+
+        public static string DescribeLoginFailure(LoginFailure failure)
+        {
+            if (failure == null)
+            {
+                return "Unknown error.";
+            }
+
+            if (failure.ErrorCodes != null && failure.ErrorCodes.Length > 0)
+            {
+                switch (failure.ErrorCodes[0])
+                {
+                    case ConnectionRefusedError.InvalidSlot:
+                        return $"No slot named \"{Celeste_MultiworldModule.Settings.SlotName}\" exists in this room. Check your Slot Name.";
+                    case ConnectionRefusedError.InvalidGame:
+                        return "This slot is not a Celeste (Open World) slot.";
+                    case ConnectionRefusedError.SlotAlreadyTaken:
+                        return "This slot is already being played by another client.";
+                    case ConnectionRefusedError.IncompatibleVersion:
+                        return "The server's Archipelago version is not compatible with this mod.";
+                    case ConnectionRefusedError.InvalidPassword:
+                        return "Incorrect password.";
+                    case ConnectionRefusedError.InvalidItemsHandling:
+                        return "The server rejected the client's item handling settings.";
+                }
+            }
+
+            if (failure.Errors != null && failure.Errors.Length > 0 && !string.IsNullOrWhiteSpace(failure.Errors[0]))
+            {
+                return string.Join(" ", failure.Errors);
+            }
+
+            return "Unknown error.";
         }
 
         public async Task<LoginFailure> Disconnect(bool attemptReconnect = true)
