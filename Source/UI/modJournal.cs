@@ -1767,41 +1767,82 @@ namespace Celeste.Mod.Celeste_Multiworld.UI
             Monocle.Draw.SpriteBatch.Begin();
             for (int i = 0; i < Celeste_MultiworldModule.SaveData.Strawberries; i++)
             {
-                MTN.Journal["strawberry"].DrawCentered(new Vector2(Monocle.Calc.Random.Next(100, 1500), Monocle.Calc.Random.Next(150, 800)));
+                MTN.Journal["strawberry"].DrawCentered(new Vector2(Monocle.Calc.Random.Next(100, 1500), Monocle.Calc.Random.Next(150, BerryAreaBottom)));
             }
             for (int i = 0; i < Celeste_MultiworldModule.SaveData.Raspberries; i++)
             {
-                MTN.Journal["raspberry"].DrawCentered(new Vector2(Monocle.Calc.Random.Next(100, 1500), Monocle.Calc.Random.Next(150, 800)));
+                MTN.Journal["raspberry"].DrawCentered(new Vector2(Monocle.Calc.Random.Next(100, 1500), Monocle.Calc.Random.Next(150, BerryAreaBottom)));
             }
             for (int i = 0; i < Celeste_MultiworldModule.SaveData.BlueRaspberries; i++)
             {
-                MTN.Journal["blue_raspberry"].DrawCentered(new Vector2(Monocle.Calc.Random.Next(100, 1500), Monocle.Calc.Random.Next(150, 800)));
+                MTN.Journal["blue_raspberry"].DrawCentered(new Vector2(Monocle.Calc.Random.Next(100, 1500), Monocle.Calc.Random.Next(150, BerryAreaBottom)));
             }
             for (int i = 0; i < Celeste_MultiworldModule.SaveData.Blueberries; i++)
             {
-                MTN.Journal["blueberry"].DrawCentered(new Vector2(Monocle.Calc.Random.Next(100, 1500), Monocle.Calc.Random.Next(150, 800)));
+                MTN.Journal["blueberry"].DrawCentered(new Vector2(Monocle.Calc.Random.Next(100, 1500), Monocle.Calc.Random.Next(150, BerryAreaBottom)));
             }
             for (int i = 0; i < Celeste_MultiworldModule.SaveData.Blackberries; i++)
             {
-                MTN.Journal["blackberry"].DrawCentered(new Vector2(Monocle.Calc.Random.Next(100, 1500), Monocle.Calc.Random.Next(150, 800)));
+                MTN.Journal["blackberry"].DrawCentered(new Vector2(Monocle.Calc.Random.Next(100, 1500), Monocle.Calc.Random.Next(150, BerryAreaBottom)));
             }
             for (int i = 0; i < Celeste_MultiworldModule.SaveData.Boysenberries; i++)
             {
-                MTN.Journal["boysenberry"].DrawCentered(new Vector2(Monocle.Calc.Random.Next(100, 1500), Monocle.Calc.Random.Next(150, 800)));
+                MTN.Journal["boysenberry"].DrawCentered(new Vector2(Monocle.Calc.Random.Next(100, 1500), Monocle.Calc.Random.Next(150, BerryAreaBottom)));
             }
             for (int i = 0; i < Celeste_MultiworldModule.SaveData.Bananas; i++)
             {
-                MTN.Journal["banana"].DrawCentered(new Vector2(Monocle.Calc.Random.Next(100, 1500), Monocle.Calc.Random.Next(150, 800)));
+                MTN.Journal["banana"].DrawCentered(new Vector2(Monocle.Calc.Random.Next(100, 1500), Monocle.Calc.Random.Next(150, BerryAreaBottom)));
             }
             for (int i = 0; i < Celeste_MultiworldModule.SaveData.Cranberries; i++)
             {
-                MTN.Journal["cranberry"].DrawCentered(new Vector2(Monocle.Calc.Random.Next(100, 1500), Monocle.Calc.Random.Next(150, 800)));
+                MTN.Journal["cranberry"].DrawCentered(new Vector2(Monocle.Calc.Random.Next(100, 1500), Monocle.Calc.Random.Next(150, BerryAreaBottom)));
             }
             for (int i = 0; i < Celeste_MultiworldModule.SaveData.GoldenRaspberries; i++)
             {
-                MTN.Journal["gold_raspberry"].DrawCentered(new Vector2(Monocle.Calc.Random.Next(100, 1500), Monocle.Calc.Random.Next(150, 800)));
+                MTN.Journal["gold_raspberry"].DrawCentered(new Vector2(Monocle.Calc.Random.Next(100, 1500), Monocle.Calc.Random.Next(150, BerryAreaBottom)));
             }
+
+            DrawBerryCounts();
+
             Monocle.Draw.SpriteBatch.End();
+        }
+
+        // Berries are scattered above this line so they never cover the counts drawn below it
+        private const int BerryAreaBottom = 760;
+
+        private static void DrawBerryCounts()
+        {
+            int strawberries = Celeste_MultiworldModule.SaveData.Strawberries;
+            int required = ArchipelagoManager.Instance.StrawberriesRequired;
+            Color strawberryColor = strawberries >= required ? new Color(30, 120, 40) : Color.Black * 0.8f;
+
+            ActiveFont.DrawOutline($"Strawberries: {strawberries} / {required}", new Vector2(805f, 860f), new Vector2(0.5f, 0.5f), Vector2.One * 0.9f, strawberryColor, 2f, Color.White);
+
+            List<string> otherBerries = new List<string>();
+            AddBerryCount(otherBerries, "Raspberries", Celeste_MultiworldModule.SaveData.Raspberries);
+            AddBerryCount(otherBerries, "Blue Raspberries", Celeste_MultiworldModule.SaveData.BlueRaspberries);
+            AddBerryCount(otherBerries, "Blueberries", Celeste_MultiworldModule.SaveData.Blueberries);
+            AddBerryCount(otherBerries, "Blackberries", Celeste_MultiworldModule.SaveData.Blackberries);
+            AddBerryCount(otherBerries, "Boysenberries", Celeste_MultiworldModule.SaveData.Boysenberries);
+            AddBerryCount(otherBerries, "Bananas", Celeste_MultiworldModule.SaveData.Bananas);
+            AddBerryCount(otherBerries, "Cranberries", Celeste_MultiworldModule.SaveData.Cranberries);
+            AddBerryCount(otherBerries, "Golden Raspberries", Celeste_MultiworldModule.SaveData.GoldenRaspberries);
+
+            // Four counts per line keeps every line within the page width
+            const int countsPerLine = 4;
+            for (int line = 0; line * countsPerLine < otherBerries.Count; line++)
+            {
+                string text = string.Join("   ", otherBerries.Skip(line * countsPerLine).Take(countsPerLine));
+                ActiveFont.DrawOutline(text, new Vector2(805f, 925f + line * 40f), new Vector2(0.5f, 0.5f), Vector2.One * 0.5f, Color.Black * 0.7f, 2f, Color.White);
+            }
+        }
+
+        private static void AddBerryCount(List<string> counts, string name, int amount)
+        {
+            if (amount > 0)
+            {
+                counts.Add($"{name}: {amount}");
+            }
         }
     }
 }
