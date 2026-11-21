@@ -425,6 +425,10 @@ namespace Celeste.Mod.Celeste_Multiworld.General
             {
                 self.Entities.Add(new RoomDisplay());
             }
+            if (self.Entities.FindFirst<ConnectionDisplay>() == null)
+            {
+                self.Entities.Add(new ConnectionDisplay());
+            }
 
             self.SaveQuitDisabled = true;
         }

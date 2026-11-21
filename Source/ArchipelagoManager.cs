@@ -79,6 +79,35 @@ namespace Celeste.Mod.Celeste_Multiworld
         public bool WasConnected { get; private set; }
         public bool AttemptingConnect { get; private set; }
         public int ReconnectAttemptCount { get; private set; } = 0;
+
+        public enum ConnectionStatus
+        {
+            Disconnected,
+            Connecting,
+            Connected,
+            Reconnecting,
+            WaitingToReconnect
+        }
+
+        public ConnectionStatus CurrentConnectionStatus
+        {
+            get
+            {
+                if (this.Ready)
+                {
+                    return ConnectionStatus.Connected;
+                }
+                if (this.AttemptingConnect)
+                {
+                    return this.WasConnected ? ConnectionStatus.Reconnecting : ConnectionStatus.Connecting;
+                }
+                if (this.WasConnected)
+                {
+                    return ConnectionStatus.WaitingToReconnect;
+                }
+                return ConnectionStatus.Disconnected;
+            }
+        }
         public List<Tuple<int, ItemInfo>> ItemQueue { get; private set; } = new();
         public List<long> CollectedLocations { get; private set; } = new();
         public Dictionary<long, ItemInfo> LocationDictionary { get; private set; } = new();
